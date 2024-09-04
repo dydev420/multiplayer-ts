@@ -103,6 +103,12 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
     players.forEach((player) => {
       common.updatePlayer(player, deltaTime);
       
+      // Draw Outline for current player
+      if (player.id === myId) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(player.x - 5, player.y - 5, common.PLAYER_SIZE + 10, common.PLAYER_SIZE + 10);
+      }
+
       ctx.fillStyle = player.style;
       ctx.fillRect(player.x, player.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
     });
