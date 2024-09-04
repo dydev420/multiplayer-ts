@@ -1,3 +1,5 @@
+import * as ws from "ws";
+
 export const SERVER_PORT = 6970;
 export const SERVER_FPS = 30;
 export const WORLD_WIDTH = 800;
@@ -44,13 +46,19 @@ export interface Player {
 
 export interface Hello {
   kind: 'hello',
-  id: number
+  id: number,
+  x: number,
+  y: number,
+  style: string,
 }
 
 export function isHello(arg: any): arg is Hello  {
   return arg
     && arg.kind === 'hello'
-    && typeof(arg.id) === 'number';
+    && typeof(arg.id) === 'number'
+    && typeof(arg.x) === 'number'
+    && typeof(arg.y) === 'number'
+    && typeof(arg.style) === 'string'
 }
 
 export interface PlayerJoined {
@@ -114,6 +122,14 @@ export function isPlayerMoved(arg: any): arg is PlayerMoved  {
 
 
 export type Event = PlayerJoined | PlayerLeft | PlayerMoving | PlayerMoved;
+
+interface Message {
+  kind: string
+}
+
+export function sendMessage<T extends Message>(socket: ws.WebSocket | WebSocket, message: T) {
+  socket.send(JSON.stringify(message));
+}
 
 
 /**

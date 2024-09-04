@@ -1,5 +1,5 @@
 import * as common from './common.mjs';
-import type { Hello, Player, Direction } from './common.mjs';
+import type { Direction, Player, Hello, PlayerJoined, PlayerLeft, PlayerMoving } from "./common.mjs";
 
 const DIRECTION_KEYS: {[key: string]: Direction} = {
   ArrowLeft: 'left',
@@ -24,15 +24,15 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
   /**
    * States
    */
-  let myId: undefined | number = undefined;
   // replicated state
+  let me : Player | undefined = undefined;
   const players = new Map<number, Player>();
   
 
   /**
    * WebSocket
    */
-  const ws = new WebSocket('ws://localhost:6970');
+  const ws = new WebSocket(`ws://localhost:${common.SERVER_PORT}`);
   ws.addEventListener('open', (event) => {
     console.log('On WebSocket OPEN', event);
   });
@@ -42,17 +42,24 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
   });
 
   ws.addEventListener('message', (event) => {
-    if (myId === undefined) {
-      const messageData = JSON.parse(event.data);
+    if (me === undefined) {
+      const messageData = JSON.parse(event.data.toString());
       if(common.isHello(messageData)) {
-        myId = messageData.id;
-        console.log('Connected Players id:', myId);
+        me = {
+          id: messageData.id,
+          x: messageData.x,
+          y: messageData.y,
+          style: messageData.style,
+          moving: structuredClone(common.DEFAULT_MOVING),
+        };
+        players.set(me.id, me);
+        console.log('Connected Players id:', me, players);
       } else {
         console.log('Server is high. Closing connection');
         ws.close();
       }
     } else {
-      console.log('Received messaged on player Id', myId);
+      console.log('Received messaged on player Id', me);
       const messageData = JSON.parse(event.data);
       if(common.isPlayerJoined(messageData)) {
         players.set(messageData.id, {
@@ -78,7 +85,7 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
         player.x = messageData.x;
         player.y = messageData.y;
       } else {
-        console.log('Server is high. Closing connection');
+        console.log('Server unexpected. Closing connection');
         ws.close();
       }
     }
@@ -104,14 +111,16 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
       common.updatePlayer(player, deltaTime);
       
       // Draw Outline for current player
-      if (player.id === myId) {
+      if (me && player.id === me?.id) {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(player.x - 5, player.y - 5, common.PLAYER_SIZE + 10, common.PLAYER_SIZE + 10);
       }
 
+      // Draw Player Body
       ctx.fillStyle = player.style;
       ctx.fillRect(player.x, player.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
     });
+
 
     window.requestAnimationFrame(frame);
   }
@@ -124,35 +133,35 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
    * Input Handlers
    */
   window.addEventListener('keydown', (e) => {
-    if(myId === undefined) {
+    if(me === undefined) {
       return;
     }
     if (!e.repeat) {
       const direction = DIRECTION_KEYS[e.code];
-      const currentPlayer = players.get(myId);
+      const currentPlayer = players.get(me.id);
       if (direction && currentPlayer) {
-        ws.send(JSON.stringify({
+        common.sendMessage<PlayerMoving>(ws, {
           kind: 'playerMoving',
           start: true,
           direction,
-        }));
+        });
         // currentPlayer.moving[direction] = true;
       }
     }
   });
   window.addEventListener('keyup', (e) => {
-    if(myId === undefined) {
+    if(me === undefined) {
       return;
     }
     if (!e.repeat) {
       const direction = DIRECTION_KEYS[e.code];
-      const currentPlayer = players.get(myId);
+      const currentPlayer = players.get(me.id);
       if (direction && currentPlayer) {
-        ws.send(JSON.stringify({
+        common.sendMessage<PlayerMoving>(ws, {
           kind: 'playerMoving',
           start: false,
           direction,
-        }));
+        });
         // currentPlayer.moving[direction] = false;
       }
     }

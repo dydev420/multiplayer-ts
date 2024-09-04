@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from "ws";
 import * as common from './common.mjs';
-import type { Player, PlayerJoined, PlayerLeft, Event } from "./common.mjs";
+import type { Player, Hello, PlayerJoined, PlayerLeft, Event } from "./common.mjs";
 
 interface PlayerWithSocket extends Player {
   ws: WebSocket
@@ -40,7 +40,7 @@ wss.on('connection', (ws) => {
     style,
     x,
     y,
-    kind: 'playerJoined'
+    kind: 'playerJoined',
   });
 
   ws.addEventListener('message', (event) => {
@@ -82,26 +82,29 @@ const tick = () => {
       case 'playerJoined': {
         const joinedPlayer = players.get(event.id);
         if (!joinedPlayer) continue;
-
-        joinedPlayer.ws.send(JSON.stringify({
+        
+        common.sendMessage<Hello>(joinedPlayer.ws, {
           kind: 'hello',
-          id: joinedPlayer.id
-        }));
+          id: joinedPlayer.id,
+          x: joinedPlayer.x,
+          y: joinedPlayer.y,
+          style: joinedPlayer.style,
+        });
 
         players.forEach((otherPlayer) => {
-          // Notify players about all previous joined active players
-          joinedPlayer.ws.send(JSON.stringify({
-            kind: 'playerJoined',
-            id: otherPlayer.id,
-            x: otherPlayer.x,
-            y: otherPlayer.y,
-            style: otherPlayer.style,
-          }));
-
           const payload = JSON.stringify(event);
-          // Notify all other players about new joined player
           if (otherPlayer.id !== joinedPlayer.id) {
-            otherPlayer.ws.send(payload);
+            // Notify players about all previous joined active players
+            common.sendMessage<PlayerJoined>(joinedPlayer.ws, {
+              kind: 'playerJoined',
+              id: otherPlayer.id,
+              x: otherPlayer.x,
+              y: otherPlayer.y,
+              style: otherPlayer.style,
+            });
+
+            // Notify all other players about new joined player
+            common.sendMessage<PlayerJoined>(otherPlayer.ws, event);
           }
         });
 
