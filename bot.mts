@@ -151,7 +151,7 @@ function createBot(): Bot {
 
 
 let bots: Array<Bot> = [];
-for (let i = 0; i < 12; i++) {
+for (let i = 0; i < 20; i++) {
   bots.push(createBot());
 }
 

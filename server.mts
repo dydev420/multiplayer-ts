@@ -2,6 +2,86 @@ import { WebSocketServer, WebSocket } from "ws";
 import * as common from './common.mjs';
 import type { Player, Hello, PlayerJoined, PlayerLeft, Event } from "./common.mjs";
 
+
+const STATS_AVERAGE_CAPACITY = 30;
+
+interface Stats {
+  startedAt: number,
+  upTime: number,
+  tickCount: number,
+  tickTimes: Array<number>,
+  messagesSent: number,
+  messagesReceived: number,
+  tickMessagesSent: Array<number>,
+  tickMessagesReceived: Array<number>,
+  bytesSent: number,
+  bytesReceived: number,
+  tickBytesSent: Array<number>,
+  tickBytesReceived: Array<number>,
+  playersCount: number,
+  playersJoined: number,
+  playersLeft: number,
+  rejectedMessages: number,
+}
+
+const stats: Stats = {
+  // tick counter
+  startedAt: performance.now(),
+  upTime: 0,
+  tickCount: 0,
+  tickTimes: [],
+  
+  // messages
+  messagesSent: 0,
+  messagesReceived: 0,
+  tickMessagesSent: [],
+  tickMessagesReceived: [],
+  
+  // bytes
+  bytesSent: 0,
+  bytesReceived: 0,
+  tickBytesSent: [],
+  tickBytesReceived: [],
+
+  // players
+  playersCount: 0,
+  playersJoined: 0,
+  playersLeft: 0,
+
+  // errors
+  rejectedMessages: 0,
+};
+
+function average(xs: Array<number>) {
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+
+function pushAverage(xs: Array<number>, value: number) {
+  if(xs.push(value) > STATS_AVERAGE_CAPACITY) {
+    xs.shift();
+  }
+}
+
+function printStats() {
+  console.log('Stats -- ::');
+  console.log('- Server Uptime s', (stats.upTime) / 1000);
+  console.log('- Tick Count', stats.tickCount);
+  console.log('- Avg tick time ms', average(stats.tickTimes));
+  console.log('- Total messages sent', stats.messagesSent);
+  console.log('- Total messages received', stats.messagesReceived);
+  console.log('- Avg Tick messages sent', average(stats.tickMessagesSent));
+  console.log('- Avg Tick messages received', average(stats.tickMessagesReceived));
+  console.log('- Total bytes sent', stats.bytesSent);
+  console.log('- Total bytes received', stats.bytesReceived);
+  console.log('- Avg Tick bytes sent', average(stats.tickBytesSent));
+  console.log('- Avg Tick bytes received', average(stats.tickBytesReceived));
+  console.log('- Avg Tick bytes received', stats.tickBytesReceived.length);
+  console.log('- Active players', stats.playersCount);
+  console.log('- Total players joined', stats.playersJoined);
+  console.log('- Total players left', stats.playersLeft);
+  console.log('- Total Rejected Messages', stats.rejectedMessages);
+}
+
 interface PlayerWithSocket extends Player {
   ws: WebSocket
 }
@@ -9,6 +89,7 @@ interface PlayerWithSocket extends Player {
 const players = new Map<number, PlayerWithSocket>()
 let idCounter = 0;
 const eventQueue: Array<Event> = [];
+let bytesReceivedWithinTick = 0;
 
 const wss = new WebSocketServer({
   port: common.SERVER_PORT,
@@ -32,7 +113,7 @@ wss.on('connection', (ws) => {
     moving: structuredClone(common.DEFAULT_MOVING),
   };
 
-  console.log(`Client id:${id} Connected.`);
+  console.log(`** Client id:${id} Connected.`);
 
   players.set(id, player);
   eventQueue.push({
@@ -43,10 +124,27 @@ wss.on('connection', (ws) => {
     kind: 'playerJoined',
   });
 
+  // update stats
+  stats.playersJoined += 1;
+
   ws.addEventListener('message', (event) => {
-    const message = JSON.parse(event.data.toString());
+    // update stats
+    stats.messagesReceived += 1;
+    stats.bytesReceived += event.data.toString().length;
+    bytesReceivedWithinTick += event.data.toString().length;
+
+    let message;
+    try {
+      message = JSON.parse(event.data.toString());
+    } catch (e) {
+      stats.rejectedMessages += 1;
+      console.log('Received invalid JSON in message', event.data);
+      ws.close();
+      return;
+    }
+
+    // handle message
     if(common.isPlayerMoving(message)) {
-      console.log('MOving PLayer try', message);
       eventQueue.push({
         kind: 'playerMoved',
         id,
@@ -56,23 +154,34 @@ wss.on('connection', (ws) => {
         direction: message.direction,
       });
     } else {
-      console.log('Client Sus');
+      stats.rejectedMessages += 1;
+      console.log('Received unexpected message type', event.data);
       ws.close();
     }
   });
 
   ws.on('close', (event) => {
     players.delete(id);
-    console.log(`Client id:${id} GONE.`);
+    console.log(`* Client id:${id} GONE.`);
     eventQueue.push({
       kind: 'playerLeft',
       id,
     });
+    
+    // Update stats
+    stats.playersLeft += 1;
   });
 });
 
 let previousTimestamp = 0;
 const tick = () => {
+  // States stuff
+  const beginMs = performance.now();
+  const messageCounter = {
+    count: 0,
+    bytesCount: 0,
+  };
+
   const timestamp = Date.now();
   const deltaTime = (timestamp - previousTimestamp)/1000;
   previousTimestamp = timestamp;
@@ -105,7 +214,7 @@ const tick = () => {
         x: joinedPlayer.x,
         y: joinedPlayer.y,
         style: joinedPlayer.style,
-      });
+      }, messageCounter);
 
       players.forEach((otherPlayer) => {
         if (otherPlayer.id !== joinedPlayer.id) {
@@ -116,7 +225,7 @@ const tick = () => {
             x: otherPlayer.x,
             y: otherPlayer.y,
             style: otherPlayer.style,
-          });
+          }, messageCounter);
         }
       });
     } 
@@ -134,7 +243,7 @@ const tick = () => {
             x: joinedPlayer.x,
             y: joinedPlayer.y,
             style: joinedPlayer.style,
-          });
+          }, messageCounter);
         }
       });
     }
@@ -146,7 +255,7 @@ const tick = () => {
       common.sendMessage<PlayerLeft>(player.ws, {
         kind: 'playerLeft',
         id: leftId,
-      });
+      }, messageCounter);
     });
   });
 
@@ -157,18 +266,38 @@ const tick = () => {
         const player = players.get(event.id);
         if (player !== undefined) { // This MAY happen if somebody joined, moved and left withing a single tick. Just skipping.
           player.moving[event.direction] = event.start;
-          const eventString = JSON.stringify(event);
-          players.forEach((player) => player.ws.send(eventString));
+          // const eventString = JSON.stringify(event);
+          players.forEach((player) => common.sendMessage(player.ws, event, messageCounter));
         }
         break;
       }
     }
   }
-
-  eventQueue.length = 0;
   
   players.forEach((player) => common.updatePlayer(player, deltaTime));  
-
+  
+  /**
+   * Update stats
+  */
+  const tickTime = performance.now() - beginMs;
+  pushAverage(stats.tickTimes, tickTime)  
+  
+  stats.tickCount += 1;
+  stats.messagesSent += messageCounter.count;
+  pushAverage(stats.tickMessagesSent, messageCounter.count);
+  pushAverage(stats.tickMessagesReceived, eventQueue.length);
+  stats.bytesSent += messageCounter.bytesCount;
+  pushAverage(stats.tickBytesSent, messageCounter.bytesCount);
+  pushAverage(stats.tickBytesReceived, bytesReceivedWithinTick);
+  stats.playersCount = players.size;
+  stats.upTime = performance.now() - stats.startedAt;
+  if (stats.tickCount % common.SERVER_FPS === 0) {
+   printStats();
+  }
+  
+  // Reset event queue and loop again
+  eventQueue.length = 0;
+  bytesReceivedWithinTick = 0;
   setTimeout(tick, 1000/common.SERVER_FPS);
 }
 

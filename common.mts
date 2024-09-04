@@ -127,8 +127,18 @@ interface Message {
   kind: string
 }
 
-export function sendMessage<T extends Message>(socket: ws.WebSocket | WebSocket, message: T) {
-  socket.send(JSON.stringify(message));
+interface MessageCounter {
+  count: number,
+  bytesCount: number,
+}
+
+export function sendMessage<T extends Message>(socket: ws.WebSocket | WebSocket, message: T, messageCounter?: MessageCounter) {
+  const payload = JSON.stringify(message);
+  socket.send(payload);
+  if (messageCounter) {
+    messageCounter.count += 1;
+    messageCounter.bytesCount += payload.length;
+  }
 }
 
 
