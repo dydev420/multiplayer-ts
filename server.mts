@@ -77,58 +77,89 @@ const tick = () => {
   const deltaTime = (timestamp - previousTimestamp)/1000;
   previousTimestamp = timestamp;
 
+  const joinedIds = new Set<number>()
+  const leftIds = new Set<number>()
+
   for (let event of eventQueue) {
     switch(event.kind) {
       case 'playerJoined': {
-        const joinedPlayer = players.get(event.id);
-        if (!joinedPlayer) continue;
-        
-        common.sendMessage<Hello>(joinedPlayer.ws, {
-          kind: 'hello',
-          id: joinedPlayer.id,
-          x: joinedPlayer.x,
-          y: joinedPlayer.y,
-          style: joinedPlayer.style,
-        });
-
-        players.forEach((otherPlayer) => {
-          const payload = JSON.stringify(event);
-          if (otherPlayer.id !== joinedPlayer.id) {
-            // Notify players about all previous joined active players
-            common.sendMessage<PlayerJoined>(joinedPlayer.ws, {
-              kind: 'playerJoined',
-              id: otherPlayer.id,
-              x: otherPlayer.x,
-              y: otherPlayer.y,
-              style: otherPlayer.style,
-            });
-
-            // Notify all other players about new joined player
-            common.sendMessage<PlayerJoined>(otherPlayer.ws, event);
-          }
-        });
-
+        joinedIds.add(event.id);
         break; 
       }
       case 'playerLeft': {
-        const payload = JSON.stringify(event);
-        players.forEach((player) => {
-          player.ws.send(payload);
-        });
-        
+        if(!joinedIds.delete(event.id)) {
+          leftIds.add(event.id);
+        }
         break;
       }
+    }
+  }
+
+  // Welcome all new joined players
+  joinedIds.forEach((playerId) => {
+    const joinedPlayer = players.get(playerId);
+    if (joinedPlayer !== undefined) {
+      common.sendMessage<Hello>(joinedPlayer.ws, {
+        kind: 'hello',
+        id: joinedPlayer.id,
+        x: joinedPlayer.x,
+        y: joinedPlayer.y,
+        style: joinedPlayer.style,
+      });
+
+      players.forEach((otherPlayer) => {
+        if (otherPlayer.id !== joinedPlayer.id) {
+          // Notify new player about all other players
+          common.sendMessage<PlayerJoined>(joinedPlayer.ws, {
+            kind: 'playerJoined',
+            id: otherPlayer.id,
+            x: otherPlayer.x,
+            y: otherPlayer.y,
+            style: otherPlayer.style,
+          });
+        }
+      });
+    } 
+  });
+
+  // Notify all players others about who joined
+  joinedIds.forEach((playerId) => {
+    const joinedPlayer = players.get(playerId);
+    if (joinedPlayer !== undefined) {
+      players.forEach((otherPlayer) => {
+        if(playerId !== otherPlayer.id) {
+          common.sendMessage<PlayerJoined>(otherPlayer.ws, {
+            kind: 'playerJoined',
+            id: joinedPlayer.id,
+            x: joinedPlayer.x,
+            y: joinedPlayer.y,
+            style: joinedPlayer.style,
+          });
+        }
+      });
+    }
+  });
+
+  // Notifying about who left
+  leftIds.forEach((leftId) => {
+    players.forEach((player) => {
+      common.sendMessage<PlayerLeft>(player.ws, {
+        kind: 'playerLeft',
+        id: leftId,
+      });
+    });
+  });
+
+  // Notify about movement
+  for (let event of eventQueue) {
+    switch(event.kind) {
       case 'playerMoved': {
-        const movedPlayer = players.get(event.id);
-        if (!movedPlayer) continue;
-
-        movedPlayer.moving[event.direction] = event.start;
-
-        const payload = JSON.stringify(event);
-        players.forEach((player) => {
-          player.ws.send(payload);
-        });
-
+        const player = players.get(event.id);
+        if (player !== undefined) { // This MAY happen if somebody joined, moved and left withing a single tick. Just skipping.
+          player.moving[event.direction] = event.start;
+          const eventString = JSON.stringify(event);
+          players.forEach((player) => player.ws.send(eventString));
+        }
         break;
       }
     }
