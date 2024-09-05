@@ -184,13 +184,13 @@ export const PlayerLeftStruct = (() => {
 })();
 
 export interface PlayerLeft {
-  kind: 'playerLeft',
+  kind: 'PlayerLeft',
   id: number,
 }
 
 export function isPlayerLeft(arg: any): arg is PlayerLeft  {
   return arg
-    && arg.kind === 'playerLeft'
+    && arg.kind === 'PlayerLeft'
     && typeof(arg.id) === 'number'
 }
 
@@ -207,8 +207,20 @@ export function isPlayerMoving(arg: any): arg is PlayerMoving  {
     && isDirection(arg.direction)
 }
 
+export const PlayerMovedStruct = (() => {
+  const allocator = { iota: 0 };
+  return {
+    kind: allocUint8Field(allocator),
+    id: allocUint32Field(allocator),
+    x: allocFloat32Field(allocator),
+    y: allocFloat32Field(allocator),
+    moving: allocUint8Field(allocator),
+    size: allocator.iota,
+  };
+})();
+
 export interface PlayerMoved {
-  kind: 'playerMoved',
+  kind: 'PlayerMoved',
   id: number,
   x: number,
   y: number,
@@ -218,7 +230,7 @@ export interface PlayerMoved {
 
 export function isPlayerMoved(arg: any): arg is PlayerMoved  {
   return arg
-    && arg.kind === 'playerMoved'
+    && arg.kind === 'PlayerMoved'
     && typeof(arg.x) === 'number'
     && typeof(arg.y) === 'number'
     && typeof(arg.start) === 'boolean'
@@ -234,7 +246,8 @@ interface Message {
 export enum MessageKind {
   Hello,
   PlayerJoined,
-  PlayerLeft
+  PlayerLeft,
+  PlayerMoved,
 }
 
 interface MessageCounter {

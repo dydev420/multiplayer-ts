@@ -47,7 +47,7 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
     if (me === undefined) {
       if (event.data instanceof ArrayBuffer) {
         const view = new DataView(event.data);
-        if(
+        if (
           common.HelloStruct.size === view.byteLength
           && common.HelloStruct.kind.read(view, 0) === common.MessageKind.Hello
         ) {
@@ -64,15 +64,11 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
           console.log('Wrong Hello message received. Closing connection');
           ws.close();
         }
-      } else {
-        console.log('Did not receive binary data on hello event');
-        ws.close();
-      }
+      } 
     } else {
-      console.log('Received messaged on player Id', me);
+      console.log('Received messaged on player', me);
       if(event.data instanceof ArrayBuffer) {
         const view = new DataView(event.data);
-        console.log('view joined', view);
         if(
           common.PlayerJoinedStruct.size === view.byteLength
           && common.PlayerJoinedStruct.kind.read(view, 0) === common.MessageKind.PlayerJoined
@@ -85,32 +81,28 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
             moving: common.movingFromMask(common.PlayerJoinedStruct.moving.read(view, 0)),
             hue: common.PlayerJoinedStruct.hue.read(view, 0)/256*360,
           });
-        } else if(
+        } else if (
           common.PlayerLeftStruct.size === view.byteLength
           && common.PlayerLeftStruct.kind.read(view, 0) === common.MessageKind.PlayerLeft
         ) {
           players.delete(common.PlayerLeftStruct.id.read(view, 0));
           console.log('Payer Left -- Players id:', players);
-        } else {
-          console.log('Unexpected binary message');
-          ws.close();
-        }
-      } else {
-        // other events handle
-        const messageData = JSON.parse(event.data);
-        if (common.isPlayerMoved(messageData)) {
-          console.log('Verified player move data', messageData);
+        } else if (
+          common.PlayerMovedStruct.size === view.byteLength
+          && common.PlayerMovedStruct.kind.read(view, 0) === common.MessageKind.PlayerMoved
+        ) {
           
-          const player = players.get(messageData.id);
+          const playerId = common.PlayerMovedStruct.id.read(view, 0);
+          const player = players.get(playerId);
           if(!player) {
-            console.log('Unknown player id:', messageData.id);
+            console.log('Unknown player id:', playerId);
             return;
           }
-          player.moving[messageData.direction] = messageData.start;
-          player.x = messageData.x;
-          player.y = messageData.y;
+          player.moving = common.movingFromMask(common.PlayerMovedStruct.moving.read(view, 0));
+          player.x = common.PlayerMovedStruct.x.read(view, 0);
+          player.y = common.PlayerMovedStruct.y.read(view, 0);
         } else {
-          console.log('Server unexpected. Closing connection');
+          console.log('Unexpected binary message');
           ws.close();
         }
       }
