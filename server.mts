@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from "ws";
 import * as common from './common.mjs';
-import type { Player, Hello, PlayerJoined, PlayerLeft, Event } from "./common.mjs";
+import type { Player, PlayerJoined, PlayerLeft, Event } from "./common.mjs";
 
 
 const STATS_AVERAGE_CAPACITY = 30;
@@ -95,21 +95,21 @@ const wss = new WebSocketServer({
   port: common.SERVER_PORT,
 });
 
-const randomStyle = () => {
-  return `hsl(${Math.random() * 360} 80% 50%)`;
+const randomHue = () => {
+  return Math.floor(Math.random() * 360);
 }
 
 wss.on('connection', (ws) => {
   const id = idCounter++;
   const x = Math.random() * common.WORLD_WIDTH;
   const y = Math.random() * common.WORLD_HEIGHT;
-  const style = randomStyle();
+  const hue = randomHue();
   const player = {
     ws,
     id,
     x,
     y,
-    style,
+    hue,
     moving: structuredClone(common.DEFAULT_MOVING),
   };
 
@@ -118,7 +118,7 @@ wss.on('connection', (ws) => {
   players.set(id, player);
   eventQueue.push({
     id,
-    style,
+    hue,
     x,
     y,
     kind: 'playerJoined',
@@ -208,13 +208,22 @@ const tick = () => {
   joinedIds.forEach((playerId) => {
     const joinedPlayer = players.get(playerId);
     if (joinedPlayer !== undefined) {
-      common.sendMessage<Hello>(joinedPlayer.ws, {
-        kind: 'hello',
-        id: joinedPlayer.id,
-        x: joinedPlayer.x,
-        y: joinedPlayer.y,
-        style: joinedPlayer.style,
-      }, messageCounter);
+
+      const view = new DataView(new ArrayBuffer(common.HelloStruct.size));
+      common.HelloStruct.kind.write(view, 0, common.MessageKind.Hello);
+      common.HelloStruct.id.write(view, 0, joinedPlayer.id);
+      common.HelloStruct.x.write(view, 0, joinedPlayer.x);
+      common.HelloStruct.y.write(view, 0, joinedPlayer.y);
+      common.HelloStruct.hue.write(view, 0, Math.floor(joinedPlayer.hue/360*256));
+      joinedPlayer.ws.send(view);
+
+      // common.sendMessage<Hello>(joinedPlayer.ws, {
+      //   kind: 'Hello',
+      //   id: joinedPlayer.id,
+      //   x: joinedPlayer.x,
+      //   y: joinedPlayer.y,
+      //   hue: joinedPlayer.hue,
+      // }, messageCounter);
 
       players.forEach((otherPlayer) => {
         if (otherPlayer.id !== joinedPlayer.id) {
@@ -224,7 +233,7 @@ const tick = () => {
             id: otherPlayer.id,
             x: otherPlayer.x,
             y: otherPlayer.y,
-            style: otherPlayer.style,
+            hue: otherPlayer.hue,
           }, messageCounter);
         }
       });
@@ -242,7 +251,7 @@ const tick = () => {
             id: joinedPlayer.id,
             x: joinedPlayer.x,
             y: joinedPlayer.y,
-            style: joinedPlayer.style,
+            hue: joinedPlayer.hue,
           }, messageCounter);
         }
       });

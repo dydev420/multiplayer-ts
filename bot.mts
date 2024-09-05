@@ -24,23 +24,32 @@ function createBot(): Bot {
     timeoutBeforeTurn: undefined,
     previousTimestamp: Date.now(),
   };
+  bot.ws.binaryType = 'arraybuffer';
 
   bot.ws.addEventListener('message', (event) => {
     if (bot.me === undefined) {
-      const messageData = JSON.parse(event.data.toString());
-      if(common.isHello(messageData)) {
-        bot.me = {
-          id: messageData.id,
-          x: messageData.x,
-          y: messageData.y,
-          style: messageData.style,
-          moving: structuredClone(common.DEFAULT_MOVING),
-        };
-        // Start bot loop
-        turn();
-        console.log('Connected Bot id:', bot.me);
+      if (event.data instanceof ArrayBuffer) {
+        const view = new DataView(event.data);
+        if(
+          common.HelloStruct.size === view.byteLength
+          && common.HelloStruct.kind.read(view, 0) === common.MessageKind.Hello
+        ) {
+          bot.me = {
+            id: common.HelloStruct.id.read(view, 0),
+            x: common.HelloStruct.x.read(view, 0),
+            y: common.HelloStruct.y.read(view, 0),
+            hue: common.HelloStruct.hue.read(view, 0)/256*360,
+            moving: structuredClone(common.DEFAULT_MOVING),
+          };
+          // Start bot loop
+          turn();
+          console.log('Connected Bot id:', bot.me);
+        } else {
+          console.log('Wrong Hello message received. Closing connection', event);
+          bot.ws.close();
+        }
       } else {
-        console.log('Server is high. Closing connection', messageData.kind, messageData.id);
+        console.log('Did not receive binary data on hello event');
         bot.ws.close();
       }
     } else {

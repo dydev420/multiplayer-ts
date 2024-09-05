@@ -1,5 +1,5 @@
 import * as common from './common.mjs';
-import type { Direction, Player, Hello, PlayerJoined, PlayerLeft, PlayerMoving } from "./common.mjs";
+import type { Direction, Player, PlayerJoined, PlayerLeft, PlayerMoving } from "./common.mjs";
 
 const DIRECTION_KEYS: {[key: string]: Direction} = {
   ArrowLeft: 'left',
@@ -33,6 +33,8 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
    * WebSocket
    */
   const ws = new WebSocket(`ws://localhost:${common.SERVER_PORT}`);
+  ws.binaryType = 'arraybuffer';
+ 
   ws.addEventListener('open', (event) => {
     console.log('On WebSocket OPEN', event);
   });
@@ -41,21 +43,29 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
     console.log('On WebSocket CLOSE', event);
   });
 
-  ws.addEventListener('message', (event) => {
+  ws.addEventListener('message', async (event) => {
     if (me === undefined) {
-      const messageData = JSON.parse(event.data.toString());
-      if(common.isHello(messageData)) {
-        me = {
-          id: messageData.id,
-          x: messageData.x,
-          y: messageData.y,
-          style: messageData.style,
-          moving: structuredClone(common.DEFAULT_MOVING),
-        };
-        players.set(me.id, me);
-        console.log('Connected Players id:', me, players);
+      if (event.data instanceof ArrayBuffer) {
+        const view = new DataView(event.data);
+        if(
+          common.HelloStruct.size === view.byteLength
+          && common.HelloStruct.kind.read(view, 0) === common.MessageKind.Hello
+        ) {
+          me = {
+            id: common.HelloStruct.id.read(view, 0),
+            x: common.HelloStruct.x.read(view, 0),
+            y: common.HelloStruct.y.read(view, 0),
+            hue: common.HelloStruct.hue.read(view, 0)/256*360,
+            moving: structuredClone(common.DEFAULT_MOVING),
+          };
+          players.set(me.id, me);
+          console.log('Connected Players id:', me, players);
+        } else {
+          console.log('Wrong Hello message received. Closing connection');
+          ws.close();
+        }
       } else {
-        console.log('Server is high. Closing connection');
+        console.log('Did not receive binary data on hello event');
         ws.close();
       }
     } else {
@@ -67,7 +77,7 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
           x: messageData.x,
           y: messageData.y,
           moving: structuredClone(common.DEFAULT_MOVING),
-          style: messageData.style,
+          hue: messageData.hue,
         });
         console.log('New Player Joined -- Players id:', players);
       } else if (common.isPlayerLeft(messageData)) {
@@ -117,7 +127,7 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
       }
 
       // Draw Player Body
-      ctx.fillStyle = player.style;
+      ctx.fillStyle = `hsl(${player.hue} 80% 50%)`;
       ctx.fillRect(player.x, player.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
     });
 
