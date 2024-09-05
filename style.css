@@ -4,4 +4,9 @@
 
 body {
   background-color: #080808;
+  text-align: center;
+}
+
+#header {
+  color: white;
 }
