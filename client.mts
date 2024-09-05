@@ -47,12 +47,12 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
     if (me === undefined) {
       if (event.data instanceof ArrayBuffer) {
         const view = new DataView(event.data);
-        if (common.HelloStruct.verifyAt(view, 0)) {
+        if (common.HelloStruct.verifyAt(view)) {
           me = {
-            id: common.HelloStruct.id.read(view, 0),
-            x: common.HelloStruct.x.read(view, 0),
-            y: common.HelloStruct.y.read(view, 0),
-            hue: common.HelloStruct.hue.read(view, 0)/256*360,
+            id: common.HelloStruct.id.read(view),
+            x: common.HelloStruct.x.read(view),
+            y: common.HelloStruct.y.read(view),
+            hue: common.HelloStruct.hue.read(view)/256*360,
             moving: 0,
           };
           players.set(me.id, me);
@@ -66,30 +66,30 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
       console.log('Received messaged on player', me);
       if(event.data instanceof ArrayBuffer) {
         const view = new DataView(event.data);
-        if(common.PlayerJoinedStruct.verifyAt(view, 0)) {
-          const id = common.PlayerJoinedStruct.id.read(view, 0);
+        if(common.PlayerJoinedStruct.verifyAt(view)) {
+          const id = common.PlayerJoinedStruct.id.read(view);
           players.set(id, {
             id,
-            x: common.PlayerJoinedStruct.x.read(view, 0),
-            y: common.PlayerJoinedStruct.y.read(view, 0),
-            moving: common.PlayerJoinedStruct.moving.read(view, 0),
-            hue: common.PlayerJoinedStruct.hue.read(view, 0)/256*360,
+            x: common.PlayerJoinedStruct.x.read(view),
+            y: common.PlayerJoinedStruct.y.read(view),
+            moving: common.PlayerJoinedStruct.moving.read(view),
+            hue: common.PlayerJoinedStruct.hue.read(view)/256*360,
           });
-        } else if (common.PlayerLeftStruct.verifyAt(view, 0)) {
-          players.delete(common.PlayerLeftStruct.id.read(view, 0));
+        } else if (common.PlayerLeftStruct.verifyAt(view)) {
+          players.delete(common.PlayerLeftStruct.id.read(view));
           console.log('Payer Left -- Players id:', players);
-        } else if (common.PlayerMovedStruct.verifyAt(view, 0)) {
-          const playerId = common.PlayerMovedStruct.id.read(view, 0);
+        } else if (common.PlayerMovedStruct.verifyAt(view)) {
+          const playerId = common.PlayerMovedStruct.id.read(view);
           const player = players.get(playerId);
           if(!player) {
             console.log('Unknown player id:', playerId);
             return;
           }
-          player.moving = common.PlayerMovedStruct.moving.read(view, 0);
-          player.x = common.PlayerMovedStruct.x.read(view, 0);
-          player.y = common.PlayerMovedStruct.y.read(view, 0);
-        } else if (common.PingPongStruct.verifyPong(view, 0)) {
-            ping = performance.now() - common.PingPongStruct.timestamp.read(view, 0);
+          player.moving = common.PlayerMovedStruct.moving.read(view);
+          player.x = common.PlayerMovedStruct.x.read(view);
+          player.y = common.PlayerMovedStruct.y.read(view);
+        } else if (common.PingPongStruct.verifyPong(view)) {
+            ping = performance.now() - common.PingPongStruct.timestamp.read(view);
         } else {
           console.log('Unexpected binary message');
           ws.close();
@@ -148,8 +148,8 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
       pingCoolDown -= 1;
       if (pingCoolDown <= 0) {
         const view = new DataView(new ArrayBuffer(common.PingPongStruct.size));
-        common.PingPongStruct.kind.write(view, 0, common.MessageKind.Ping);
-        common.PingPongStruct.timestamp.write(view, 0, performance.now());
+        common.PingPongStruct.kind.write(view, common.MessageKind.Ping);
+        common.PingPongStruct.timestamp.write(view, performance.now());
         ws.send(view);
   
         pingCoolDown = PING_COOL_DOWN;
@@ -174,9 +174,9 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
       const direction = DIRECTION_KEYS[e.code];
       if (direction !== undefined) {
         const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
-        common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
-        common.PlayerMovingStruct.start.write(view, 0, 1);
-        common.PlayerMovingStruct.direction.write(view, 0, direction);
+        common.PlayerMovingStruct.kind.write(view, common.MessageKind.PlayerMoving);
+        common.PlayerMovingStruct.start.write(view, 1);
+        common.PlayerMovingStruct.direction.write(view, direction);
         
         ws.send(view);
       }
@@ -190,9 +190,9 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
       const direction = DIRECTION_KEYS[e.code];
       if (direction !== undefined) {
         const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
-        common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
-        common.PlayerMovingStruct.start.write(view, 0, 0);
-        common.PlayerMovingStruct.direction.write(view, 0, direction);
+        common.PlayerMovingStruct.kind.write(view, common.MessageKind.PlayerMoving);
+        common.PlayerMovingStruct.start.write(view, 0);
+        common.PlayerMovingStruct.direction.write(view, direction);
         ws.send(view);
       }
     }

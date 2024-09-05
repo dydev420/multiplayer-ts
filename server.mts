@@ -139,13 +139,13 @@ wss.on('connection', (ws) => {
     if (event.data instanceof ArrayBuffer) {
       const view = new DataView(event.data);
       
-      if (common.PlayerMovingStruct.verifyAt(view, 0)) {
-        const direction = common.PlayerMovingStruct.direction.read(view, 0);
-        const start = common.PlayerMovingStruct.start.read(view, 0);
+      if (common.PlayerMovingStruct.verifyAt(view)) {
+        const direction = common.PlayerMovingStruct.direction.read(view);
+        const start = common.PlayerMovingStruct.start.read(view);
         
         player.newMoving = common.applyDirectionMask(player.newMoving, direction, start)
-      } else if (common.PingPongStruct.verifyPing(view, 0)) {
-        pingIds.set(id, common.PingPongStruct.timestamp.read(view, 0));
+      } else if (common.PingPongStruct.verifyPing(view)) {
+        pingIds.set(id, common.PingPongStruct.timestamp.read(view));
       } else {
           stats.rejectedMessages += 1;
           console.log('Received unexpected message type');
@@ -187,23 +187,23 @@ const tick = () => {
     const joinedPlayer = players.get(playerId);
     if (joinedPlayer !== undefined) {
       const view = new DataView(new ArrayBuffer(common.HelloStruct.size));
-      common.HelloStruct.kind.write(view, 0, common.MessageKind.Hello);
-      common.HelloStruct.id.write(view, 0, joinedPlayer.id);
-      common.HelloStruct.x.write(view, 0, joinedPlayer.x);
-      common.HelloStruct.y.write(view, 0, joinedPlayer.y);
-      common.HelloStruct.hue.write(view, 0, Math.floor(joinedPlayer.hue/360*256));
+      common.HelloStruct.kind.write(view, common.MessageKind.Hello);
+      common.HelloStruct.id.write(view, joinedPlayer.id);
+      common.HelloStruct.x.write(view, joinedPlayer.x);
+      common.HelloStruct.y.write(view, joinedPlayer.y);
+      common.HelloStruct.hue.write(view, Math.floor(joinedPlayer.hue/360*256));
       joinedPlayer.ws.send(view);
 
       // Reconstruct all other players in new player's state
       players.forEach((otherPlayer) => {
         if (otherPlayer.id !== joinedPlayer.id) {
           const view = new DataView(new ArrayBuffer(common.PlayerJoinedStruct.size));
-          common.PlayerJoinedStruct.kind.write(view, 0, common.MessageKind.PlayerJoined);
-          common.PlayerJoinedStruct.id.write(view, 0, otherPlayer.id);
-          common.PlayerJoinedStruct.x.write(view, 0, otherPlayer.x);
-          common.PlayerJoinedStruct.y.write(view, 0, otherPlayer.y);
-          common.PlayerJoinedStruct.hue.write(view, 0, Math.floor(otherPlayer.hue/360*256));
-          common.PlayerJoinedStruct.moving.write(view, 0, otherPlayer.moving);
+          common.PlayerJoinedStruct.kind.write(view, common.MessageKind.PlayerJoined);
+          common.PlayerJoinedStruct.id.write(view, otherPlayer.id);
+          common.PlayerJoinedStruct.x.write(view, otherPlayer.x);
+          common.PlayerJoinedStruct.y.write(view, otherPlayer.y);
+          common.PlayerJoinedStruct.hue.write(view, Math.floor(otherPlayer.hue/360*256));
+          common.PlayerJoinedStruct.moving.write(view, otherPlayer.moving);
           joinedPlayer.ws.send(view);
         }
       });
@@ -215,12 +215,12 @@ const tick = () => {
     const joinedPlayer = players.get(playerId);
     if (joinedPlayer !== undefined) {
       const view = new DataView(new ArrayBuffer(common.PlayerJoinedStruct.size));
-      common.PlayerJoinedStruct.kind.write(view, 0, common.MessageKind.PlayerJoined);
-      common.PlayerJoinedStruct.id.write(view, 0, joinedPlayer.id);
-      common.PlayerJoinedStruct.x.write(view, 0, joinedPlayer.x);
-      common.PlayerJoinedStruct.y.write(view, 0, joinedPlayer.y);
-      common.PlayerJoinedStruct.hue.write(view, 0, Math.floor(joinedPlayer.hue/360*256));
-      common.PlayerJoinedStruct.moving.write(view, 0,joinedPlayer.moving);
+      common.PlayerJoinedStruct.kind.write(view, common.MessageKind.PlayerJoined);
+      common.PlayerJoinedStruct.id.write(view, joinedPlayer.id);
+      common.PlayerJoinedStruct.x.write(view, joinedPlayer.x);
+      common.PlayerJoinedStruct.y.write(view, joinedPlayer.y);
+      common.PlayerJoinedStruct.hue.write(view, Math.floor(joinedPlayer.hue/360*256));
+      common.PlayerJoinedStruct.moving.write(view, joinedPlayer.moving);
       
       players.forEach((otherPlayer) => {
         if(playerId !== otherPlayer.id) {
@@ -233,8 +233,8 @@ const tick = () => {
   // Notifying about who left
   leftIds.forEach((leftId) => {
     const view = new DataView(new ArrayBuffer(common.PlayerLeftStruct.size));
-    common.PlayerJoinedStruct.kind.write(view, 0, common.MessageKind.PlayerLeft);
-    common.PlayerJoinedStruct.id.write(view, 0, leftId);
+    common.PlayerJoinedStruct.kind.write(view, common.MessageKind.PlayerLeft);
+    common.PlayerJoinedStruct.id.write(view, leftId);
     players.forEach((player) => {
       player.ws.send(view);
     });
@@ -246,11 +246,11 @@ const tick = () => {
       player.moving = player.newMoving;
       
       const view = new DataView(new ArrayBuffer(common.PlayerMovedStruct.size));
-      common.PlayerMovedStruct.kind.write(view, 0, common.MessageKind.PlayerMoved);
-      common.PlayerMovedStruct.id.write(view, 0, player.id);
-      common.PlayerMovedStruct.x.write(view, 0, player.x);
-      common.PlayerMovedStruct.y.write(view, 0, player.y);
-      common.PlayerMovedStruct.moving.write(view, 0, player.moving);
+      common.PlayerMovedStruct.kind.write(view, common.MessageKind.PlayerMoved);
+      common.PlayerMovedStruct.id.write(view, player.id);
+      common.PlayerMovedStruct.x.write(view, player.x);
+      common.PlayerMovedStruct.y.write(view, player.y);
+      common.PlayerMovedStruct.moving.write(view, player.moving);
  
       
       players.forEach((otherPlayer) => {
@@ -266,8 +266,8 @@ const tick = () => {
     const player = players.get(id);
     if (player !== undefined) {
       const view = new DataView(new ArrayBuffer(common.PingPongStruct.size));
-      common.PingPongStruct.kind.write(view, 0, common.MessageKind.Pong);
-      common.PingPongStruct.timestamp.write(view, 0, timestamp);
+      common.PingPongStruct.kind.write(view, common.MessageKind.Pong);
+      common.PingPongStruct.timestamp.write(view, timestamp);
       player.ws.send(view);
     }
   });

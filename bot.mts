@@ -33,12 +33,12 @@ function createBot(): Bot {
 
     const view = new DataView(event.data);
     if (bot.me === undefined) {
-      if (common.HelloStruct.verifyAt(view, 0)) {
+      if (common.HelloStruct.verifyAt(view)) {
         bot.me = {
-          id: common.HelloStruct.id.read(view, 0),
-          x: common.HelloStruct.x.read(view, 0),
-          y: common.HelloStruct.y.read(view, 0),
-          hue: common.HelloStruct.hue.read(view, 0)/256*360,
+          id: common.HelloStruct.id.read(view),
+          x: common.HelloStruct.x.read(view),
+          y: common.HelloStruct.y.read(view),
+          hue: common.HelloStruct.hue.read(view)/256*360,
           moving: 0,
         };
         // Start bot loop
@@ -49,12 +49,12 @@ function createBot(): Bot {
           bot.ws.close();
         }
     } else {
-      if (common.PlayerMovedStruct.verifyAt(view, 0)) {
-        const botId = common.PlayerMovedStruct.id.read(view, 0);
+      if (common.PlayerMovedStruct.verifyAt(view)) {
+        const botId = common.PlayerMovedStruct.id.read(view);
         if(bot.me && botId === bot.me.id)  {
-          bot.me.moving = common.PlayerMovedStruct.moving.read(view, 0);
-          bot.me.x = common.PlayerMovedStruct.x.read(view, 0);
-          bot.me.y = common.PlayerMovedStruct.y.read(view, 0);
+          bot.me.moving = common.PlayerMovedStruct.moving.read(view);
+          bot.me.x = common.PlayerMovedStruct.x.read(view);
+          bot.me.y = common.PlayerMovedStruct.y.read(view);
         }
       }
     }
@@ -89,7 +89,7 @@ function createBot(): Bot {
   function turn() {
     if (bot.me !== undefined) {
       const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
-      common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
+      common.PlayerMovingStruct.kind.write(view, common.MessageKind.PlayerMoving);
       
       bot.me.moving = 0;
       bot.timeoutBeforeTurn = undefined;
@@ -99,20 +99,20 @@ function createBot(): Bot {
   
         if (Math.abs(dx) > EPS) {
           if(dx > 0) {
-            common.PlayerMovingStruct.direction.write(view, 0, common.Direction.Right);
-            common.PlayerMovingStruct.start.write(view, 0, 1);
+            common.PlayerMovingStruct.direction.write(view, common.Direction.Right);
+            common.PlayerMovingStruct.start.write(view, 1);
           } else {
-            common.PlayerMovingStruct.direction.write(view, 0, common.Direction.Left);
-            common.PlayerMovingStruct.start.write(view, 0, 1);
+            common.PlayerMovingStruct.direction.write(view, common.Direction.Left);
+            common.PlayerMovingStruct.start.write(view, 1);
           }
           bot.timeoutBeforeTurn = Math.abs(dx) / common.PLAYER_SPEED;
         } else if (Math.abs(dy) > EPS) {
           if(dy > 0) {
-            common.PlayerMovingStruct.direction.write(view, 0, common.Direction.Down);
-            common.PlayerMovingStruct.start.write(view, 0, 1);
+            common.PlayerMovingStruct.direction.write(view, common.Direction.Down);
+            common.PlayerMovingStruct.start.write(view, 1);
           } else {
-            common.PlayerMovingStruct.direction.write(view, 0, common.Direction.Up);
-            common.PlayerMovingStruct.start.write(view, 0, 1);
+            common.PlayerMovingStruct.direction.write(view, common.Direction.Up);
+            common.PlayerMovingStruct.start.write(view, 1);
           }
           bot.timeoutBeforeTurn = Math.abs(dy) / common.PLAYER_SPEED;
         }

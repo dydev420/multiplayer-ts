@@ -48,8 +48,8 @@ export interface Player {
 interface Field {
   offset: number,
   size: number,
-  read(view: DataView, offset: number): number,
-  write(view: DataView, offset: number, value: number): void,
+  read(view: DataView): number,
+  write(view: DataView, value: number): void,
 }
 
 const UINT8_SIZE = 1;
@@ -63,8 +63,8 @@ function allocUint8Field(allocator: { iota: number }): Field {
   return {
     offset,
     size,
-    read: (view, baseOffset) => view.getUint8(baseOffset + offset),
-    write: (view, baseOffset, value) => view.setUint8(baseOffset + offset, value),
+    read: (view) => view.getUint8(offset),
+    write: (view, value) => view.setUint8(offset, value),
   };
 }
 
@@ -75,8 +75,8 @@ function allocUint32Field(allocator: { iota: number }): Field {
   return {
     offset,
     size,
-    read: (view, baseOffset) => view.getUint32(baseOffset + offset, true),
-    write: (view, baseOffset, value) => view.setUint32(baseOffset + offset, value, true),
+    read: (view) => view.getUint32(offset, true),
+    write: (view, value) => view.setUint32(offset, value, true),
   };
 }
 
@@ -87,13 +87,13 @@ function allocFloat32Field(allocator: { iota: number }): Field {
   return {
     offset,
     size,
-    read: (view, baseOffset) => view.getFloat32(baseOffset + offset, true),
-    write: (view, baseOffset, value) => view.setFloat32(baseOffset + offset, value, true),
+    read: (view) => view.getFloat32(offset, true),
+    write: (view, value) => view.setFloat32(offset, value, true),
   };
 }
 
-function verifier(kindField: Field, kind: number, size: number ): (view: DataView, baseOffset: number) => boolean {
-  return (view, baseOffset) => view.byteLength === size && kindField.read(view, baseOffset) === kind;
+function verifier(kindField: Field, kind: number, size: number ): (view: DataView) => boolean {
+  return (view) => view.byteLength === size && kindField.read(view) === kind;
 } 
 
 export enum MessageKind {
