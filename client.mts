@@ -47,7 +47,7 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
     if (me === undefined) {
       if (event.data instanceof ArrayBuffer) {
         const view = new DataView(event.data);
-        if (common.HelloStruct.verifyAt(view)) {
+        if (common.HelloStruct.verify(view)) {
           me = {
             id: common.HelloStruct.id.read(view),
             x: common.HelloStruct.x.read(view),
@@ -65,7 +65,7 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
     } else {
       if(event.data instanceof ArrayBuffer) {
         const view = new DataView(event.data);
-        if(common.PlayerJoinedStruct.verifyAt(view)) {
+        if(common.PlayerJoinedStruct.verify(view)) {
           const id = common.PlayerJoinedStruct.id.read(view);
           players.set(id, {
             id,
@@ -74,10 +74,10 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
             moving: common.PlayerJoinedStruct.moving.read(view),
             hue: common.PlayerJoinedStruct.hue.read(view)/256*360,
           });
-        } else if (common.PlayerLeftStruct.verifyAt(view)) {
+        } else if (common.PlayerLeftStruct.verify(view)) {
           players.delete(common.PlayerLeftStruct.id.read(view));
           console.log('Payer Left -- Players id:', players);
-        } else if (common.PlayerMovedStruct.verifyAt(view)) {
+        } else if (common.PlayerMovedStruct.verify(view)) {
           const playerId = common.PlayerMovedStruct.id.read(view);
           const player = players.get(playerId);
           if(!player) {

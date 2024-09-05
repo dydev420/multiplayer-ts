@@ -139,7 +139,7 @@ wss.on('connection', (ws) => {
     if (event.data instanceof ArrayBuffer) {
       const view = new DataView(event.data);
       
-      if (common.PlayerMovingStruct.verifyAt(view)) {
+      if (common.PlayerMovingStruct.verify(view)) {
         const direction = common.PlayerMovingStruct.direction.read(view);
         const start = common.PlayerMovingStruct.start.read(view);
         
