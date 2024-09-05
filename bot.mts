@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 import * as common from './common.mjs';
-import type { Player, Direction } from "./common.mjs";
+import type { Player } from "./common.mjs";
 
 // const EPS = 1e-6;
 const EPS = 10;
@@ -39,7 +39,7 @@ function createBot(): Bot {
           x: common.HelloStruct.x.read(view, 0),
           y: common.HelloStruct.y.read(view, 0),
           hue: common.HelloStruct.hue.read(view, 0)/256*360,
-          moving: structuredClone(common.DEFAULT_MOVING),
+          moving: 0,
         };
         // Start bot loop
         turn();
@@ -52,7 +52,7 @@ function createBot(): Bot {
       if (common.PlayerMovedStruct.verifyAt(view, 0)) {
         const botId = common.PlayerMovedStruct.id.read(view, 0);
         if(bot.me && botId === bot.me.id)  {
-          bot.me.moving = common.movingFromMask(common.PlayerMovedStruct.moving.read(view, 0));
+          bot.me.moving = common.PlayerMovedStruct.moving.read(view, 0);
           bot.me.x = common.PlayerMovedStruct.x.read(view, 0);
           bot.me.y = common.PlayerMovedStruct.y.read(view, 0);
         }
@@ -88,18 +88,7 @@ function createBot(): Bot {
 
   function turn() {
     if (bot.me !== undefined) {
-      let direction: Direction;
-      for (direction in bot.me.moving) { 
-        if (bot.me.moving[direction]) {
-          bot.me.moving[direction] = false;
-          const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
-          common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
-          common.PlayerMovingStruct.moving.write(view, 0, common.movingMask(bot.me.moving));
-          bot.ws.send(view);
-        }
-      }
-  
-      
+      bot.me.moving = 0;
       bot.timeoutBeforeTurn = undefined;
       do {
         const dx = bot.goalX - bot.me.x;
@@ -107,17 +96,17 @@ function createBot(): Bot {
   
         if (Math.abs(dx) > EPS) {
           if(dx > 0) {
-            bot.me.moving.right = true;
+            bot.me.moving = common.applyDirectionOnMask(bot.me.moving, common.Direction.Right, true);
           } else {
-            bot.me.moving.left = true;
+            bot.me.moving = common.applyDirectionOnMask(bot.me.moving, common.Direction.Left, true);
           }
     
           bot.timeoutBeforeTurn = Math.abs(dx) / common.PLAYER_SPEED;
         } else if (Math.abs(dy) > EPS) {
           if(dy > 0) {
-            bot.me.moving.down = true;
+            bot.me.moving = common.applyDirectionOnMask(bot.me.moving, common.Direction.Down, true);;
           } else {
-            bot.me.moving.up = true;
+            bot.me.moving = common.applyDirectionOnMask(bot.me.moving, common.Direction.Up, true);
           }
           
           bot.timeoutBeforeTurn = Math.abs(dy) / common.PLAYER_SPEED;
@@ -125,7 +114,7 @@ function createBot(): Bot {
 
         const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
         common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
-        common.PlayerMovingStruct.moving.write(view, 0, common.movingMask(bot.me.moving));
+        common.PlayerMovingStruct.moving.write(view, 0, bot.me.moving);
         bot.ws.send(view);
   
         // new random target if reached goal

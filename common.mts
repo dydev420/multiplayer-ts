@@ -7,64 +7,41 @@ export const WORLD_HEIGHT = 600;
 export const PLAYER_SIZE = 30;
 export const PLAYER_SPEED = 500;
 
-export type Direction = 'left' | 'right' | 'up' | 'down';
-
-export function isDirection(arg: any): arg is Direction {
-  return DEFAULT_MOVING[arg as Direction] !== undefined;
+export enum Direction {
+    Left = 0,
+    Right,
+    Up,
+    Down,
+    Count,
 }
 
-export type Moving = {
-  [k in Direction]: boolean
+export function checkMovementMaskForDir(moving: number, dir: number): number {
+  return (moving>>dir)&1;
 }
 
-const directions: Direction[] = ['left', 'right', 'up', 'down'];
-
-export const movingMask = (moving: Moving): number => {
-  let mask = 0;
-  for (let i = 0; i < directions.length; i++) {
-    if (moving[directions[i]]) {
-      mask = mask|(1<<i);
-    }
-  }
-
-  return mask;
+export function applyDirectionOnMask(moving: number, dir: number, start: boolean = false): number {
+  return start ? moving|(1<<dir) : moving&~(1<<dir);
 }
-
-export const movingFromMask = (mask: number): Moving => {
-  let moving: Moving = structuredClone(DEFAULT_MOVING);
-  for (let i = 0; i < directions.length; i++) {
-    if (((mask>>i)&1) !== 0) {
-      moving[directions[i]] = true;
-    }
-  }
-
-  return moving;
-}
-
-export const DEFAULT_MOVING: Moving = {
-  left: false,
-  right: false,
-  up: false,
-  down: false,
-};
 
 export type Vector2 = {
   x: number,
   y: number,
 }
 
-export const DIRECTION_VECTORS: { [key in Direction]: Vector2 } = {
-  left: { x: -1, y: 0 },
-  right: { x: 1, y: 0 },
-  up: { x: 0, y: -1 },
-  down: { x: 0, y: 1 },
-};
+export const DIRECTION_VECTORS: Vector2[] = (() => {
+  const vectors = Array(Direction.Count);
+  vectors[Direction.Left] = { x: -1, y: 0 };
+  vectors[Direction.Right] = { x: 1, y: 0 };
+  vectors[Direction.Up] = { x: 0, y: -1 };
+  vectors[Direction.Down] = { x: 0, y: 1 };
+  return vectors;
+})();
 
 export interface Player {
   id: number,
   x: number,
   y: number,
-  moving: Moving,
+  moving: number,
   hue: number,
 }
 
@@ -208,11 +185,10 @@ export function fMod(a: number, b: number) {
 }
 
 export function updatePlayer (player: Player, deltaTime: number) {
-  let dir: Direction;
   let dx = 0;
   let dy = 0;
-  for (dir in DIRECTION_VECTORS) {
-    if (player.moving[dir]) {
+  for (let dir = 0; dir < Direction.Count; dir++) {
+    if (checkMovementMaskForDir(player.moving, dir)) {
       dx += DIRECTION_VECTORS[dir].x;
       dy += DIRECTION_VECTORS[dir].y;
     }

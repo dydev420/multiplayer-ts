@@ -115,7 +115,7 @@ wss.on('connection', (ws) => {
     x,
     y,
     hue,
-    moving: structuredClone(common.DEFAULT_MOVING),
+    moving: 0,
     moved: false,
   };
 
@@ -138,7 +138,7 @@ wss.on('connection', (ws) => {
       const view = new DataView(event.data);
       
       if (common.PlayerMovingStruct.verifyAt(view, 0)) {
-        player.moving = common.movingFromMask(common.PlayerMovingStruct.moving.read(view, 0));
+        player.moving = common.PlayerMovingStruct.moving.read(view, 0);
         player.moved = true;
       } else {
           stats.rejectedMessages += 1;
@@ -197,7 +197,7 @@ const tick = () => {
           common.PlayerJoinedStruct.x.write(view, 0, otherPlayer.x);
           common.PlayerJoinedStruct.y.write(view, 0, otherPlayer.y);
           common.PlayerJoinedStruct.hue.write(view, 0, Math.floor(otherPlayer.hue/360*256));
-          common.PlayerJoinedStruct.moving.write(view, 0, common.movingMask(otherPlayer.moving));
+          common.PlayerJoinedStruct.moving.write(view, 0, otherPlayer.moving);
           joinedPlayer.ws.send(view);
         }
       });
@@ -214,8 +214,7 @@ const tick = () => {
       common.PlayerJoinedStruct.x.write(view, 0, joinedPlayer.x);
       common.PlayerJoinedStruct.y.write(view, 0, joinedPlayer.y);
       common.PlayerJoinedStruct.hue.write(view, 0, Math.floor(joinedPlayer.hue/360*256));
-      common.PlayerJoinedStruct.moving.write(view, 0, common.movingMask(joinedPlayer.moving));
-
+      common.PlayerJoinedStruct.moving.write(view, 0,joinedPlayer.moving);
       
       players.forEach((otherPlayer) => {
         if(playerId !== otherPlayer.id) {
@@ -243,7 +242,7 @@ const tick = () => {
       common.PlayerMovedStruct.id.write(view, 0, player.id);
       common.PlayerMovedStruct.x.write(view, 0, player.x);
       common.PlayerMovedStruct.y.write(view, 0, player.y);
-      common.PlayerMovedStruct.moving.write(view, 0, common.movingMask(player.moving));
+      common.PlayerMovedStruct.moving.write(view, 0, player.moving);
  
       
       players.forEach((otherPlayer) => {
