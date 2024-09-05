@@ -123,25 +123,31 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
       ctx.fillText(label, ctx.canvas.width/2 - labelSize.width/2, ctx.canvas.height/2 - labelSize.width/2);
     } else {
       players.forEach((player) => {
+        // Update all player physics
         common.updatePlayer(player, deltaTime);
         
-        // Draw Outline for current player
-        if (me && player.id === me?.id) {
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(player.x - 5, player.y - 5, common.PLAYER_SIZE + 10, common.PLAYER_SIZE + 10);
+        if(player.id !== me?.id ) {
+          // Draw Player Body
+          ctx.fillStyle = `hsl(${player.hue} 80% 50%)`;
+          ctx.fillRect(player.x, player.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
         }
-  
-        // Draw Player Body
-        ctx.fillStyle = `hsl(${player.hue} 80% 50%)`;
-        ctx.fillRect(player.x, player.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
       });
+      
+      // Draw current player on top with outline
+      if(me) {
+        // outline
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(me.x - 5, me.y - 5, common.PLAYER_SIZE + 10, common.PLAYER_SIZE + 10);
+        // body
+        ctx.fillStyle = `hsl(${me.hue} 80% 50%)`;
+        ctx.fillRect(me.x, me.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
+      }
 
       // render ping stats
       ctx.font = "24px bold";
       ctx.fillStyle = "white";
       const pingPadding = ctx.canvas.width*0.05;
       ctx.fillText(`Ping: ${ping.toFixed(2)}ms`, pingPadding, pingPadding);
-      
   
       // Send Ping to server
       pingCoolDown -= 1;
