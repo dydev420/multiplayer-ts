@@ -84,7 +84,7 @@ function printStats() {
 
 interface PlayerOnServer extends Player {
   ws: WebSocket,
-  moved: boolean,
+  newMoving: number,
 }
 
 const players = new Map<number, PlayerOnServer>()
@@ -116,6 +116,7 @@ wss.on('connection', (ws) => {
     y,
     hue,
     moving: 0,
+    newMoving: 0,
     moved: false,
   };
 
@@ -138,8 +139,7 @@ wss.on('connection', (ws) => {
       const view = new DataView(event.data);
       
       if (common.PlayerMovingStruct.verifyAt(view, 0)) {
-        player.moving = common.PlayerMovingStruct.moving.read(view, 0);
-        player.moved = true;
+        player.newMoving = common.PlayerMovingStruct.moving.read(view, 0);
       } else {
           stats.rejectedMessages += 1;
           console.log('Received unexpected message type');
@@ -236,7 +236,9 @@ const tick = () => {
 
   // Notify about movement
   players.forEach((player) => {
-    if (player.moved) {
+    if (player.newMoving !== player.moving) {
+      player.moving = player.newMoving;
+      
       const view = new DataView(new ArrayBuffer(common.PlayerMovedStruct.size));
       common.PlayerMovedStruct.kind.write(view, 0, common.MessageKind.PlayerMoved);
       common.PlayerMovedStruct.id.write(view, 0, player.id);
@@ -248,8 +250,6 @@ const tick = () => {
       players.forEach((otherPlayer) => {
         otherPlayer.ws.send(view);
       });
-
-      player.moved = false;
     }
   });
   
