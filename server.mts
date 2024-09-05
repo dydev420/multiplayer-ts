@@ -137,10 +137,7 @@ wss.on('connection', (ws) => {
     if (event.data instanceof ArrayBuffer) {
       const view = new DataView(event.data);
       
-      if (
-        common.PlayerMovingStruct.size === view.byteLength
-        && common.PlayerMovingStruct.kind.read(view, 0) === common.MessageKind.PlayerMoving
-      ) {
+      if (common.PlayerMovingStruct.verifyAt(view, 0)) {
         player.moving = common.movingFromMask(common.PlayerMovingStruct.moving.read(view, 0));
         player.moved = true;
       } else {

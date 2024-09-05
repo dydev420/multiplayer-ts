@@ -27,43 +27,36 @@ function createBot(): Bot {
   bot.ws.binaryType = 'arraybuffer';
 
   bot.ws.addEventListener('message', (event) => {
-    if (event.data instanceof ArrayBuffer) {
-      const view = new DataView(event.data);
-      if (bot.me === undefined) {
-        if(
-          common.HelloStruct.size === view.byteLength
-          && common.HelloStruct.kind.read(view, 0) === common.MessageKind.Hello
-        ) {
-          bot.me = {
-            id: common.HelloStruct.id.read(view, 0),
-            x: common.HelloStruct.x.read(view, 0),
-            y: common.HelloStruct.y.read(view, 0),
-            hue: common.HelloStruct.hue.read(view, 0)/256*360,
-            moving: structuredClone(common.DEFAULT_MOVING),
-          };
-          // Start bot loop
-          turn();
-          console.log('Connected Bot id:', bot.me);
-        } else {
-            console.log('Wrong Hello message received. Closing connection', event);
-            bot.ws.close();
-          }
+    if (!(event.data instanceof ArrayBuffer)) {
+      return;
+    }
+
+    const view = new DataView(event.data);
+    if (bot.me === undefined) {
+      if (common.HelloStruct.verifyAt(view, 0)) {
+        bot.me = {
+          id: common.HelloStruct.id.read(view, 0),
+          x: common.HelloStruct.x.read(view, 0),
+          y: common.HelloStruct.y.read(view, 0),
+          hue: common.HelloStruct.hue.read(view, 0)/256*360,
+          moving: structuredClone(common.DEFAULT_MOVING),
+        };
+        // Start bot loop
+        turn();
+        console.log('Connected Bot id:', bot.me);
       } else {
-        if (
-          common.PlayerMovedStruct.size === view.byteLength
-          && common.PlayerMovedStruct.kind.read(view, 0) === common.MessageKind.PlayerMoved
-        ) {
-          const botId = common.PlayerMovedStruct.id.read(view, 0);
-          if(bot.me && botId === bot.me.id)  {
-            bot.me.moving = common.movingFromMask(common.PlayerMovedStruct.moving.read(view, 0));
-            bot.me.x = common.PlayerMovedStruct.x.read(view, 0);
-            bot.me.y = common.PlayerMovedStruct.y.read(view, 0);
-          }
+          console.log('Wrong Hello message received. Closing connection', event);
+          bot.ws.close();
+        }
+    } else {
+      if (common.PlayerMovedStruct.verifyAt(view, 0)) {
+        const botId = common.PlayerMovedStruct.id.read(view, 0);
+        if(bot.me && botId === bot.me.id)  {
+          bot.me.moving = common.movingFromMask(common.PlayerMovedStruct.moving.read(view, 0));
+          bot.me.x = common.PlayerMovedStruct.x.read(view, 0);
+          bot.me.y = common.PlayerMovedStruct.y.read(view, 0);
         }
       }
-    } else {
-      console.log('Did not receive binary data on event');
-      bot.ws.close();
     }
   });
 

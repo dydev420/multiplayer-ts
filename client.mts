@@ -47,10 +47,7 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
     if (me === undefined) {
       if (event.data instanceof ArrayBuffer) {
         const view = new DataView(event.data);
-        if (
-          common.HelloStruct.size === view.byteLength
-          && common.HelloStruct.kind.read(view, 0) === common.MessageKind.Hello
-        ) {
+        if (common.HelloStruct.verifyAt(view, 0)) {
           me = {
             id: common.HelloStruct.id.read(view, 0),
             x: common.HelloStruct.x.read(view, 0),
@@ -69,10 +66,7 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
       console.log('Received messaged on player', me);
       if(event.data instanceof ArrayBuffer) {
         const view = new DataView(event.data);
-        if(
-          common.PlayerJoinedStruct.size === view.byteLength
-          && common.PlayerJoinedStruct.kind.read(view, 0) === common.MessageKind.PlayerJoined
-        ) {
+        if(common.PlayerJoinedStruct.verifyAt(view, 0)) {
           const id = common.PlayerJoinedStruct.id.read(view, 0);
           players.set(id, {
             id,
@@ -81,16 +75,10 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
             moving: common.movingFromMask(common.PlayerJoinedStruct.moving.read(view, 0)),
             hue: common.PlayerJoinedStruct.hue.read(view, 0)/256*360,
           });
-        } else if (
-          common.PlayerLeftStruct.size === view.byteLength
-          && common.PlayerLeftStruct.kind.read(view, 0) === common.MessageKind.PlayerLeft
-        ) {
+        } else if (common.PlayerLeftStruct.verifyAt(view, 0)) {
           players.delete(common.PlayerLeftStruct.id.read(view, 0));
           console.log('Payer Left -- Players id:', players);
-        } else if (
-          common.PlayerMovedStruct.size === view.byteLength
-          && common.PlayerMovedStruct.kind.read(view, 0) === common.MessageKind.PlayerMoved
-        ) {
+        } else if (common.PlayerMovedStruct.verifyAt(view, 0)) {
           
           const playerId = common.PlayerMovedStruct.id.read(view, 0);
           const player = players.get(playerId);
