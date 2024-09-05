@@ -177,8 +177,6 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
     }
     if (!e.repeat) {
       const direction = DIRECTION_KEYS[e.code];
-      console.log('Direction', direction);
-      
       if (direction !== undefined) {
         const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
         common.PlayerMovingStruct.kind.write(view, common.MessageKind.PlayerMoving);
@@ -196,7 +194,6 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
     if (!e.repeat) {
       
       const direction = DIRECTION_KEYS[e.code];
-      console.log('Direction', direction);
       if (direction !== undefined) {
         const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
         common.PlayerMovingStruct.kind.write(view, common.MessageKind.PlayerMoving);
