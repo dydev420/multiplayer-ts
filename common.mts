@@ -15,11 +15,11 @@ export enum Direction {
     Count,
 }
 
-export function checkMovementMaskForDir(moving: number, dir: number): number {
+export function checkDirectionMask(moving: number, dir: number): number {
   return (moving>>dir)&1;
 }
 
-export function applyDirectionOnMask(moving: number, dir: number, start: boolean = false): number {
+export function applyDirectionMask(moving: number, dir: number, start: number = 0): number {
   return start ? moving|(1<<dir) : moving&~(1<<dir);
 }
 
@@ -141,10 +141,11 @@ export const PlayerLeftStruct = (() => {
 export const PlayerMovingStruct = (() => {
   const allocator = { iota: 0 };
   const kind = allocUint8Field(allocator);
-  const moving = allocUint8Field(allocator);
+  const direction = allocUint8Field(allocator);
+  const start = allocUint8Field(allocator);
   const size = allocator.iota;
   const verifyAt = verifier(kind, MessageKind.PlayerMoving, size);
-  return { kind, moving, size, verifyAt }
+  return { kind, direction, start, size, verifyAt }
 })()
 
 export const PlayerMovedStruct = (() => {
@@ -188,7 +189,7 @@ export function updatePlayer (player: Player, deltaTime: number) {
   let dx = 0;
   let dy = 0;
   for (let dir = 0; dir < Direction.Count; dir++) {
-    if (checkMovementMaskForDir(player.moving, dir)) {
+    if (checkDirectionMask(player.moving, dir)) {
       dx += DIRECTION_VECTORS[dir].x;
       dy += DIRECTION_VECTORS[dir].y;
     }

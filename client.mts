@@ -145,10 +145,10 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
     if (!e.repeat) {
       const direction = DIRECTION_KEYS[e.code];
       if (direction !== undefined) {
-        me.moving = common.applyDirectionOnMask(me.moving, direction, true);
         const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
         common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
-        common.PlayerMovingStruct.moving.write(view, 0, me.moving);
+        common.PlayerMovingStruct.start.write(view, 0, 1);
+        common.PlayerMovingStruct.direction.write(view, 0, direction);
         
         ws.send(view);
       }
@@ -161,10 +161,10 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
     if (!e.repeat) {
       const direction = DIRECTION_KEYS[e.code];
       if (direction !== undefined) {
-        me.moving = common.applyDirectionOnMask(me.moving, direction, false);
         const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
         common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
-        common.PlayerMovingStruct.moving.write(view, 0, me.moving);
+        common.PlayerMovingStruct.start.write(view, 0, 0);
+        common.PlayerMovingStruct.direction.write(view, 0, direction);
         ws.send(view);
       }
     }

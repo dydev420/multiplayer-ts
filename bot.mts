@@ -88,6 +88,9 @@ function createBot(): Bot {
 
   function turn() {
     if (bot.me !== undefined) {
+      const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
+      common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
+      
       bot.me.moving = 0;
       bot.timeoutBeforeTurn = undefined;
       do {
@@ -96,25 +99,24 @@ function createBot(): Bot {
   
         if (Math.abs(dx) > EPS) {
           if(dx > 0) {
-            bot.me.moving = common.applyDirectionOnMask(bot.me.moving, common.Direction.Right, true);
+            common.PlayerMovingStruct.direction.write(view, 0, common.Direction.Right);
+            common.PlayerMovingStruct.start.write(view, 0, 1);
           } else {
-            bot.me.moving = common.applyDirectionOnMask(bot.me.moving, common.Direction.Left, true);
+            common.PlayerMovingStruct.direction.write(view, 0, common.Direction.Left);
+            common.PlayerMovingStruct.start.write(view, 0, 1);
           }
-    
           bot.timeoutBeforeTurn = Math.abs(dx) / common.PLAYER_SPEED;
         } else if (Math.abs(dy) > EPS) {
           if(dy > 0) {
-            bot.me.moving = common.applyDirectionOnMask(bot.me.moving, common.Direction.Down, true);;
+            common.PlayerMovingStruct.direction.write(view, 0, common.Direction.Down);
+            common.PlayerMovingStruct.start.write(view, 0, 1);
           } else {
-            bot.me.moving = common.applyDirectionOnMask(bot.me.moving, common.Direction.Up, true);
+            common.PlayerMovingStruct.direction.write(view, 0, common.Direction.Up);
+            common.PlayerMovingStruct.start.write(view, 0, 1);
           }
-          
           bot.timeoutBeforeTurn = Math.abs(dy) / common.PLAYER_SPEED;
         }
 
-        const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
-        common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
-        common.PlayerMovingStruct.moving.write(view, 0, bot.me.moving);
         bot.ws.send(view);
   
         // new random target if reached goal

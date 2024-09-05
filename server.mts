@@ -139,7 +139,10 @@ wss.on('connection', (ws) => {
       const view = new DataView(event.data);
       
       if (common.PlayerMovingStruct.verifyAt(view, 0)) {
-        player.newMoving = common.PlayerMovingStruct.moving.read(view, 0);
+        const direction = common.PlayerMovingStruct.direction.read(view, 0);
+        const start = common.PlayerMovingStruct.start.read(view, 0);
+        
+        player.newMoving = common.applyDirectionMask(player.moving, direction, start)
       } else {
           stats.rejectedMessages += 1;
           console.log('Received unexpected message type');
@@ -271,7 +274,7 @@ const tick = () => {
   stats.playersCount = players.size;
   stats.upTime = performance.now() - stats.startedAt;
   if (stats.tickCount % common.SERVER_FPS === 0) {
-   printStats();
+  //  printStats();
   }
   
   // Reset event queue and loop again
