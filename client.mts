@@ -1,5 +1,5 @@
 import * as common from './common.mjs';
-import type { Direction, Player, PlayerJoined, PlayerLeft, PlayerMoving } from "./common.mjs";
+import type { Direction, Player, } from "./common.mjs";
 
 const DIRECTION_KEYS: {[key: string]: Direction} = {
   ArrowLeft: 'left',

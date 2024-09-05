@@ -127,23 +127,6 @@ export const HelloStruct = (() => {
   };
 })();
 
-export interface Hello {
-  kind: 'hello',
-  id: number,
-  x: number,
-  y: number,
-  hue: string,
-}
-
-export function isHello(arg: any): arg is Hello  {
-  return arg
-    && arg.kind === 'hello'
-    && typeof(arg.id) === 'number'
-    && typeof(arg.x) === 'number'
-    && typeof(arg.y) === 'number'
-    && typeof(arg.hue) === 'number'
-}
-
 export const PlayerJoinedStruct = (() => {
   const allocator = { iota: 0 };
   return {
@@ -157,23 +140,6 @@ export const PlayerJoinedStruct = (() => {
   };
 })();
 
-export interface PlayerJoined {
-  kind: 'PlayerJoined',
-  id: number,
-  x: number,
-  y: number,
-  hue: number,
-}
-
-export function isPlayerJoined(arg: any): arg is PlayerJoined  {
-  return arg
-    && arg.kind === 'PlayerJoined'
-    && typeof(arg.id) === 'number'
-    && typeof(arg.x) === 'number'
-    && typeof(arg.y) === 'number'
-    && typeof(arg.hue) === 'number'
-}
-
 export const PlayerLeftStruct = (() => {
   const allocator = { iota: 0 };
   return {
@@ -183,17 +149,6 @@ export const PlayerLeftStruct = (() => {
   };
 })();
 
-export interface PlayerLeft {
-  kind: 'PlayerLeft',
-  id: number,
-}
-
-export function isPlayerLeft(arg: any): arg is PlayerLeft  {
-  return arg
-    && arg.kind === 'PlayerLeft'
-    && typeof(arg.id) === 'number'
-}
-
 export const PlayerMovingStruct = (() => {
   const allocator = { iota: 0 };
   return {
@@ -202,19 +157,6 @@ export const PlayerMovingStruct = (() => {
     size: allocator.iota,
   };
 })()
-
-export interface PlayerMoving {
-  kind: 'playerMoving',
-  start: boolean,
-  direction: Direction,
-}
-
-export function isPlayerMoving(arg: any): arg is PlayerMoving  {
-  return arg
-    && arg.kind === 'playerMoving'
-    && typeof(arg.start) === 'boolean'
-    && isDirection(arg.direction)
-}
 
 export const PlayerMovedStruct = (() => {
   const allocator = { iota: 0 };
@@ -227,26 +169,6 @@ export const PlayerMovedStruct = (() => {
     size: allocator.iota,
   };
 })();
-
-export interface PlayerMoved {
-  kind: 'PlayerMoved',
-  id: number,
-  x: number,
-  y: number,
-  start: boolean,
-  direction: Direction,
-}
-
-export function isPlayerMoved(arg: any): arg is PlayerMoved  {
-  return arg
-    && arg.kind === 'PlayerMoved'
-    && typeof(arg.x) === 'number'
-    && typeof(arg.y) === 'number'
-    && typeof(arg.start) === 'boolean'
-    && isDirection(arg.direction)
-}
-
-export type Event = PlayerJoined | PlayerLeft | PlayerMoving | PlayerMoved;
 
 interface Message {
   kind: string
@@ -273,7 +195,6 @@ export function sendMessage<T extends Message>(socket: ws.WebSocket | WebSocket,
     messageCounter.bytesCount += payload.length;
   }
 }
-
 
 /**
  * Engine

@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from "ws";
 import * as common from './common.mjs';
-import type { Player, Event } from "./common.mjs";
+import type { Player } from "./common.mjs";
 
 
 const STATS_AVERAGE_CAPACITY = 30;
@@ -152,28 +152,6 @@ wss.on('connection', (ws) => {
       console.log('Did not receive binary data');
       ws.close();
     }
-
-
-
-    // let message;
-    // try {
-    //   message = JSON.parse(event.data.toString());
-    // } catch (e) {
-    //   stats.rejectedMessages += 1;
-    //   console.log('Received invalid JSON in message', event.data);
-    //   ws.close();
-    //   return;
-    // }
-
-    // // handle message
-    // if(common.isPlayerMoving(message)) {
-    //   player.moving[message.direction] = message.start;
-    //   player.moved = true;
-    // } else {
-    //   stats.rejectedMessages += 1;
-    //   console.log('Received unexpected message type', event.data);
-    //   ws.close();
-    // }
   });
 
   ws.on('close', (event) => {
