@@ -143,7 +143,7 @@ wss.on('connection', (ws) => {
         const direction = common.PlayerMovingStruct.direction.read(view, 0);
         const start = common.PlayerMovingStruct.start.read(view, 0);
         
-        player.newMoving = common.applyDirectionMask(player.moving, direction, start)
+        player.newMoving = common.applyDirectionMask(player.newMoving, direction, start)
       } else if (common.PingPongStruct.verifyPing(view, 0)) {
         pingIds.set(id, common.PingPongStruct.timestamp.read(view, 0));
       } else {

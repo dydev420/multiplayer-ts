@@ -90,7 +90,6 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
           player.y = common.PlayerMovedStruct.y.read(view, 0);
         } else if (common.PingPongStruct.verifyPong(view, 0)) {
             ping = performance.now() - common.PingPongStruct.timestamp.read(view, 0);
-            console.log('Round Trip Ping: ', ping);
         } else {
           console.log('Unexpected binary message');
           ws.close();
