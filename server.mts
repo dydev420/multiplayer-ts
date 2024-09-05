@@ -103,6 +103,8 @@ const randomHue = () => {
 }
 
 wss.on('connection', (ws) => {
+  ws.binaryType = 'arraybuffer';
+
   const id = idCounter++;
   const x = Math.random() * common.WORLD_WIDTH;
   const y = Math.random() * common.WORLD_HEIGHT;
@@ -124,33 +126,54 @@ wss.on('connection', (ws) => {
 
   // update stats
   stats.playersJoined += 1;
-
+  
   ws.addEventListener('message', (event) => {
     // update stats
     stats.messagesReceived += 1;
     stats.bytesReceived += event.data.toString().length;
     bytesReceivedWithinTick += event.data.toString().length;
     messagesReceivedWithinTick += 1;
-
-    let message;
-    try {
-      message = JSON.parse(event.data.toString());
-    } catch (e) {
-      stats.rejectedMessages += 1;
-      console.log('Received invalid JSON in message', event.data);
-      ws.close();
-      return;
-    }
-
-    // handle message
-    if(common.isPlayerMoving(message)) {
-      player.moving[message.direction] = message.start;
-      player.moved = true;
+    
+    if (event.data instanceof ArrayBuffer) {
+      const view = new DataView(event.data);
+      
+      if (
+        common.PlayerMovingStruct.size === view.byteLength
+        && common.PlayerMovingStruct.kind.read(view, 0) === common.MessageKind.PlayerMoving
+      ) {
+        player.moving = common.movingFromMask(common.PlayerMovingStruct.moving.read(view, 0));
+        player.moved = true;
+      } else {
+          stats.rejectedMessages += 1;
+          console.log('Received unexpected message type');
+          ws.close();
+        }
     } else {
-      stats.rejectedMessages += 1;
-      console.log('Received unexpected message type', event.data);
+      console.log('Did not receive binary data');
       ws.close();
     }
+
+
+
+    // let message;
+    // try {
+    //   message = JSON.parse(event.data.toString());
+    // } catch (e) {
+    //   stats.rejectedMessages += 1;
+    //   console.log('Received invalid JSON in message', event.data);
+    //   ws.close();
+    //   return;
+    // }
+
+    // // handle message
+    // if(common.isPlayerMoving(message)) {
+    //   player.moving[message.direction] = message.start;
+    //   player.moved = true;
+    // } else {
+    //   stats.rejectedMessages += 1;
+    //   console.log('Received unexpected message type', event.data);
+    //   ws.close();
+    // }
   });
 
   ws.on('close', (event) => {

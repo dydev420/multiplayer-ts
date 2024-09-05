@@ -194,6 +194,15 @@ export function isPlayerLeft(arg: any): arg is PlayerLeft  {
     && typeof(arg.id) === 'number'
 }
 
+export const PlayerMovingStruct = (() => {
+  const allocator = { iota: 0 };
+  return {
+    kind: allocUint8Field(allocator),
+    moving: allocUint8Field(allocator),
+    size: allocator.iota,
+  };
+})()
+
 export interface PlayerMoving {
   kind: 'playerMoving',
   start: boolean,
@@ -248,6 +257,7 @@ export enum MessageKind {
   PlayerJoined,
   PlayerLeft,
   PlayerMoved,
+  PlayerMoving,
 }
 
 interface MessageCounter {

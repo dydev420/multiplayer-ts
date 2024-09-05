@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 import * as common from './common.mjs';
-import type { Player, Direction, PlayerMoving } from "./common.mjs";
+import type { Player, Direction } from "./common.mjs";
 
 // const EPS = 1e-6;
 const EPS = 10;
@@ -27,9 +27,9 @@ function createBot(): Bot {
   bot.ws.binaryType = 'arraybuffer';
 
   bot.ws.addEventListener('message', (event) => {
-    if (bot.me === undefined) {
-      if (event.data instanceof ArrayBuffer) {
-        const view = new DataView(event.data);
+    if (event.data instanceof ArrayBuffer) {
+      const view = new DataView(event.data);
+      if (bot.me === undefined) {
         if(
           common.HelloStruct.size === view.byteLength
           && common.HelloStruct.kind.read(view, 0) === common.MessageKind.Hello
@@ -45,26 +45,25 @@ function createBot(): Bot {
           turn();
           console.log('Connected Bot id:', bot.me);
         } else {
-          console.log('Wrong Hello message received. Closing connection', event);
-          bot.ws.close();
-        }
+            console.log('Wrong Hello message received. Closing connection', event);
+            bot.ws.close();
+          }
       } else {
-        console.log('Did not receive binary data on hello event');
-        bot.ws.close();
-      }
-    } else {
-      if (typeof(event.data) === 'string') {
-        const messageData = JSON.parse(event.data.toString());
-        console.log('Received messaged on player Id', bot.me.id);
-        if (common.isPlayerMoved(messageData)) {
-          console.log('Verified Bot move data', messageData);
-          if(bot && (bot.me.id === messageData.id)) {
-            bot.me.moving[messageData.direction] = messageData.start;
-            bot.me.x = messageData.x;
-            bot.me.y = messageData.y;
+        if (
+          common.PlayerMovedStruct.size === view.byteLength
+          && common.PlayerMovedStruct.kind.read(view, 0) === common.MessageKind.PlayerMoved
+        ) {
+          const botId = common.PlayerMovedStruct.id.read(view, 0);
+          if(bot.me && botId === bot.me.id)  {
+            bot.me.moving = common.movingFromMask(common.PlayerMovedStruct.moving.read(view, 0));
+            bot.me.x = common.PlayerMovedStruct.x.read(view, 0);
+            bot.me.y = common.PlayerMovedStruct.y.read(view, 0);
           }
         }
       }
+    } else {
+      console.log('Did not receive binary data on event');
+      bot.ws.close();
     }
   });
 
@@ -100,11 +99,10 @@ function createBot(): Bot {
       for (direction in bot.me.moving) { 
         if (bot.me.moving[direction]) {
           bot.me.moving[direction] = false;
-          common.sendMessage<PlayerMoving>(bot.ws, {
-            kind: 'playerMoving',
-            start: false,
-            direction,
-          });
+          const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
+          common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
+          common.PlayerMovingStruct.moving.write(view, 0, common.movingMask(bot.me.moving));
+          bot.ws.send(view);
         }
       }
   
@@ -116,37 +114,26 @@ function createBot(): Bot {
   
         if (Math.abs(dx) > EPS) {
           if(dx > 0) {
-            common.sendMessage<PlayerMoving>(bot.ws, {
-              kind: 'playerMoving',
-              start: true,
-              direction: 'right',
-            });
+            bot.me.moving.right = true;
           } else {
-            common.sendMessage<PlayerMoving>(bot.ws, {
-              kind: 'playerMoving',
-              start: true,
-              direction: 'left',
-            });
+            bot.me.moving.left = true;
           }
     
           bot.timeoutBeforeTurn = Math.abs(dx) / common.PLAYER_SPEED;
         } else if (Math.abs(dy) > EPS) {
           if(dy > 0) {
-            common.sendMessage<PlayerMoving>(bot.ws, {
-              kind: 'playerMoving',
-              start: true,
-              direction: 'down',
-            });
+            bot.me.moving.down = true;
           } else {
-            common.sendMessage<PlayerMoving>(bot.ws, {
-              kind: 'playerMoving',
-              start: true,
-              direction: 'up',
-            });
+            bot.me.moving.up = true;
           }
           
           bot.timeoutBeforeTurn = Math.abs(dy) / common.PLAYER_SPEED;
         }
+
+        const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
+        common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
+        common.PlayerMovingStruct.moving.write(view, 0, common.movingMask(bot.me.moving));
+        bot.ws.send(view);
   
         // new random target if reached goal
         if (bot.timeoutBeforeTurn === undefined) {

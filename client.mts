@@ -151,36 +151,32 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
    * Input Handlers
    */
   window.addEventListener('keydown', (e) => {
-    if(me === undefined) {
+    if(me === undefined || ws === undefined) {
       return;
     }
     if (!e.repeat) {
       const direction = DIRECTION_KEYS[e.code];
-      const currentPlayer = players.get(me.id);
-      if (direction && currentPlayer) {
-        common.sendMessage<PlayerMoving>(ws, {
-          kind: 'playerMoving',
-          start: true,
-          direction,
-        });
-        // currentPlayer.moving[direction] = true;
+      if (direction) {
+        me.moving[direction] = true;
+        const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
+        common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
+        common.PlayerMovingStruct.moving.write(view, 0, common.movingMask(me.moving));
+        ws.send(view);
       }
     }
   });
   window.addEventListener('keyup', (e) => {
-    if(me === undefined) {
+    if(me === undefined || ws === undefined) {
       return;
     }
     if (!e.repeat) {
       const direction = DIRECTION_KEYS[e.code];
-      const currentPlayer = players.get(me.id);
-      if (direction && currentPlayer) {
-        common.sendMessage<PlayerMoving>(ws, {
-          kind: 'playerMoving',
-          start: false,
-          direction,
-        });
-        // currentPlayer.moving[direction] = false;
+      if (direction) {
+        me.moving[direction] = false;
+        const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
+        common.PlayerMovingStruct.kind.write(view, 0, common.MessageKind.PlayerMoving);
+        common.PlayerMovingStruct.moving.write(view, 0, common.movingMask(me.moving));
+        ws.send(view);
       }
     }
   });
