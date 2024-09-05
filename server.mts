@@ -259,6 +259,7 @@ const tick = () => {
     }
   });
   
+  // Update Engine tick
   players.forEach((player) => common.updatePlayer(player, deltaTime));  
   
   // returning pings

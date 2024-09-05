@@ -63,7 +63,6 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
         }
       } 
     } else {
-      console.log('Received messaged on player', me);
       if(event.data instanceof ArrayBuffer) {
         const view = new DataView(event.data);
         if(common.PlayerJoinedStruct.verifyAt(view)) {
@@ -172,6 +171,8 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
     }
     if (!e.repeat) {
       const direction = DIRECTION_KEYS[e.code];
+      console.log('Direction', direction);
+      
       if (direction !== undefined) {
         const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
         common.PlayerMovingStruct.kind.write(view, common.MessageKind.PlayerMoving);
@@ -187,7 +188,9 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
       return;
     }
     if (!e.repeat) {
+      
       const direction = DIRECTION_KEYS[e.code];
+      console.log('Direction', direction);
       if (direction !== undefined) {
         const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
         common.PlayerMovingStruct.kind.write(view, common.MessageKind.PlayerMoving);
