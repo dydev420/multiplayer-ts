@@ -279,11 +279,15 @@ const tick = () => {
 
   // Notifying about who left
   leftIds.forEach((leftId) => {
+    const view = new DataView(new ArrayBuffer(common.PlayerLeftStruct.size));
+    common.PlayerJoinedStruct.kind.write(view, 0, common.MessageKind.PlayerLeft);
+    common.PlayerJoinedStruct.id.write(view, 0, leftId);
     players.forEach((player) => {
-      common.sendMessage<PlayerLeft>(player.ws, {
-        kind: 'playerLeft',
-        id: leftId,
-      }, messageCounter);
+      player.ws.send(view);
+      // common.sendMessage<PlayerLeft>(player.ws, {
+      //   kind: 'playerLeft',
+      //   id: leftId,
+      // }, messageCounter);
     });
   });
 

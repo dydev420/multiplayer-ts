@@ -53,14 +53,16 @@ function createBot(): Bot {
         bot.ws.close();
       }
     } else {
-      const messageData = JSON.parse(event.data.toString());
-      console.log('Received messaged on player Id', bot.me.id);
-      if (common.isPlayerMoved(messageData)) {
-        console.log('Verified Bot move data', messageData);
-        if(bot && (bot.me.id === messageData.id)) {
-          bot.me.moving[messageData.direction] = messageData.start;
-          bot.me.x = messageData.x;
-          bot.me.y = messageData.y;
+      if (typeof(event.data) === 'string') {
+        const messageData = JSON.parse(event.data.toString());
+        console.log('Received messaged on player Id', bot.me.id);
+        if (common.isPlayerMoved(messageData)) {
+          console.log('Verified Bot move data', messageData);
+          if(bot && (bot.me.id === messageData.id)) {
+            bot.me.moving[messageData.direction] = messageData.start;
+            bot.me.x = messageData.x;
+            bot.me.y = messageData.y;
+          }
         }
       }
     }

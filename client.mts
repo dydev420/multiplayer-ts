@@ -85,14 +85,20 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
             moving: common.movingFromMask(common.PlayerJoinedStruct.moving.read(view, 0)),
             hue: common.PlayerJoinedStruct.hue.read(view, 0)/256*360,
           });
+        } else if(
+          common.PlayerLeftStruct.size === view.byteLength
+          && common.PlayerLeftStruct.kind.read(view, 0) === common.MessageKind.PlayerLeft
+        ) {
+          players.delete(common.PlayerLeftStruct.id.read(view, 0));
+          console.log('Payer Left -- Players id:', players);
+        } else {
+          console.log('Unexpected binary message');
+          ws.close();
         }
       } else {
         // other events handle
         const messageData = JSON.parse(event.data);
-        if (common.isPlayerLeft(messageData)) {
-          players.delete(messageData.id);
-          console.log('Payer Left -- Players id:', players);
-        } else if (common.isPlayerMoved(messageData)) {
+        if (common.isPlayerMoved(messageData)) {
           console.log('Verified player move data', messageData);
           
           const player = players.get(messageData.id);

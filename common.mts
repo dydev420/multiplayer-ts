@@ -68,11 +68,6 @@ export interface Player {
   hue: number,
 }
 
-export enum MessageKind {
-  Hello,
-  PlayerJoined,
-}
-
 interface Field {
   offset: number,
   size: number,
@@ -132,19 +127,6 @@ export const HelloStruct = (() => {
   };
 })();
 
-export const PlayerJoinedStruct = (() => {
-  const allocator = { iota: 0 };
-  return {
-    kind: allocUint8Field(allocator),
-    id: allocUint32Field(allocator),
-    x: allocFloat32Field(allocator),
-    y: allocFloat32Field(allocator),
-    hue: allocUint8Field(allocator),
-    moving: allocUint8Field(allocator),
-    size: allocator.iota,
-  };
-})();
-
 export interface Hello {
   kind: 'hello',
   id: number,
@@ -162,6 +144,18 @@ export function isHello(arg: any): arg is Hello  {
     && typeof(arg.hue) === 'number'
 }
 
+export const PlayerJoinedStruct = (() => {
+  const allocator = { iota: 0 };
+  return {
+    kind: allocUint8Field(allocator),
+    id: allocUint32Field(allocator),
+    x: allocFloat32Field(allocator),
+    y: allocFloat32Field(allocator),
+    hue: allocUint8Field(allocator),
+    moving: allocUint8Field(allocator),
+    size: allocator.iota,
+  };
+})();
 
 export interface PlayerJoined {
   kind: 'PlayerJoined',
@@ -179,6 +173,15 @@ export function isPlayerJoined(arg: any): arg is PlayerJoined  {
     && typeof(arg.y) === 'number'
     && typeof(arg.hue) === 'number'
 }
+
+export const PlayerLeftStruct = (() => {
+  const allocator = { iota: 0 };
+  return {
+    kind: allocUint8Field(allocator),
+    id: allocUint32Field(allocator),
+    size: allocator.iota,
+  };
+})();
 
 export interface PlayerLeft {
   kind: 'playerLeft',
@@ -226,6 +229,12 @@ export type Event = PlayerJoined | PlayerLeft | PlayerMoving | PlayerMoved;
 
 interface Message {
   kind: string
+}
+
+export enum MessageKind {
+  Hello,
+  PlayerJoined,
+  PlayerLeft
 }
 
 interface MessageCounter {
