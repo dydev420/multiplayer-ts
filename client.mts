@@ -27,7 +27,7 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
   // replicated state
   let me : Player | undefined = undefined;
   const players = new Map<number, Player>();
-  
+  let ping = 0;
 
   /**
    * WebSocket
@@ -79,7 +79,6 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
           players.delete(common.PlayerLeftStruct.id.read(view, 0));
           console.log('Payer Left -- Players id:', players);
         } else if (common.PlayerMovedStruct.verifyAt(view, 0)) {
-          
           const playerId = common.PlayerMovedStruct.id.read(view, 0);
           const player = players.get(playerId);
           if(!player) {
@@ -89,6 +88,9 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
           player.moving = common.PlayerMovedStruct.moving.read(view, 0);
           player.x = common.PlayerMovedStruct.x.read(view, 0);
           player.y = common.PlayerMovedStruct.y.read(view, 0);
+        } else if (common.PingPongStruct.verifyPong(view, 0)) {
+            ping = performance.now() - common.PingPongStruct.timestamp.read(view, 0);
+            console.log('Round Trip Ping: ', ping);
         } else {
           console.log('Unexpected binary message');
           ws.close();
@@ -104,7 +106,9 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
   /**
    * Game Loop
    */
+  const PING_COOL_DOWN = 60;
   let previousTimestamp = 0;
+  let pingCoolDown = PING_COOL_DOWN;
   const frame = (timestamp: number) => {
     const deltaTime = (timestamp - previousTimestamp)/1000;
     previousTimestamp = timestamp;    
@@ -113,20 +117,45 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
     ctx.fillStyle = '#181818';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    players.forEach((player) => {
-      common.updatePlayer(player, deltaTime);
+    if (ws === undefined) {
+      const label = "Not Connected";
+      const labelSize = ctx.measureText(label);
+      ctx.font = "32px bold";
+      ctx.fillStyle = "#080808";
+      ctx.fillText(label, ctx.canvas.width/2 - labelSize.width/2, ctx.canvas.height/2 - labelSize.width/2);
+    } else {
+      players.forEach((player) => {
+        common.updatePlayer(player, deltaTime);
+        
+        // Draw Outline for current player
+        if (me && player.id === me?.id) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(player.x - 5, player.y - 5, common.PLAYER_SIZE + 10, common.PLAYER_SIZE + 10);
+        }
+  
+        // Draw Player Body
+        ctx.fillStyle = `hsl(${player.hue} 80% 50%)`;
+        ctx.fillRect(player.x, player.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
+      });
+
+      // render ping stats
+      ctx.font = "24px bold";
+      ctx.fillStyle = "white";
+      const pingPadding = ctx.canvas.width*0.05;
+      ctx.fillText(`Ping: ${ping.toFixed(2)}ms`, pingPadding, pingPadding);
       
-      // Draw Outline for current player
-      if (me && player.id === me?.id) {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(player.x - 5, player.y - 5, common.PLAYER_SIZE + 10, common.PLAYER_SIZE + 10);
+  
+      // Send Ping to server
+      pingCoolDown -= 1;
+      if (pingCoolDown <= 0) {
+        const view = new DataView(new ArrayBuffer(common.PingPongStruct.size));
+        common.PingPongStruct.kind.write(view, 0, common.MessageKind.Ping);
+        common.PingPongStruct.timestamp.write(view, 0, performance.now());
+        ws.send(view);
+  
+        pingCoolDown = PING_COOL_DOWN;
       }
-
-      // Draw Player Body
-      ctx.fillStyle = `hsl(${player.hue} 80% 50%)`;
-      ctx.fillRect(player.x, player.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
-    });
-
+    }
 
     window.requestAnimationFrame(frame);
   }

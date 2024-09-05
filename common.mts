@@ -97,12 +97,24 @@ function verifier(kindField: Field, kind: number, size: number ): (view: DataVie
 } 
 
 export enum MessageKind {
+  Ping,
+  Pong,
   Hello,
   PlayerJoined,
   PlayerLeft,
   PlayerMoved,
   PlayerMoving,
 }
+
+export const PingPongStruct = (() => {
+  const allocator = { iota: 0 };
+  const kind = allocUint8Field(allocator);
+  const timestamp = allocUint32Field(allocator);
+  const size = allocator.iota;
+  const verifyPing = verifier(kind, MessageKind.Ping, size);
+  const verifyPong = verifier(kind, MessageKind.Pong, size);
+  return { kind, timestamp, size, verifyPing, verifyPong };
+})();
 
 export const HelloStruct = (() => {
   const allocator = { iota: 0 };

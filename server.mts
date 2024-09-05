@@ -93,6 +93,7 @@ let bytesReceivedWithinTick = 0;
 let messagesReceivedWithinTick = 0;
 const joinedIds = new Set<number>();
 const leftIds = new Set<number>();
+const pingIds = new Map<number, number>();
 
 const wss = new WebSocketServer({
   port: common.SERVER_PORT,
@@ -143,6 +144,8 @@ wss.on('connection', (ws) => {
         const start = common.PlayerMovingStruct.start.read(view, 0);
         
         player.newMoving = common.applyDirectionMask(player.moving, direction, start)
+      } else if (common.PingPongStruct.verifyPing(view, 0)) {
+        pingIds.set(id, common.PingPongStruct.timestamp.read(view, 0));
       } else {
           stats.rejectedMessages += 1;
           console.log('Received unexpected message type');
@@ -258,6 +261,17 @@ const tick = () => {
   
   players.forEach((player) => common.updatePlayer(player, deltaTime));  
   
+  // returning pings
+  pingIds.forEach((timestamp, id) => {
+    const player = players.get(id);
+    if (player !== undefined) {
+      const view = new DataView(new ArrayBuffer(common.PingPongStruct.size));
+      common.PingPongStruct.kind.write(view, 0, common.MessageKind.Pong);
+      common.PingPongStruct.timestamp.write(view, 0, timestamp);
+      player.ws.send(view);
+    }
+  });
+
   /**
    * Update stats
   */
@@ -280,6 +294,7 @@ const tick = () => {
   // Reset event queue and loop again
   joinedIds.clear();
   leftIds.clear();
+  pingIds.clear();
   bytesReceivedWithinTick = 0;
   messagesReceivedWithinTick = 0;
   setTimeout(tick, 1000/common.SERVER_FPS);
