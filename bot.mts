@@ -90,41 +90,24 @@ function createBot(): Bot {
     if (bot.me !== undefined) {
       const view = new DataView(new ArrayBuffer(common.PlayerMovingStruct.size));
       common.PlayerMovingStruct.kind.write(view, common.MessageKind.PlayerMoving);
-      
-      bot.me.moving = 0;
-      bot.timeoutBeforeTurn = undefined;
-      do {
-        const dx = bot.goalX - bot.me.x;
-        const dy = bot.goalY - bot.me.y;
-  
-        if (Math.abs(dx) > EPS) {
-          if(dx > 0) {
-            common.PlayerMovingStruct.direction.write(view, common.Direction.Right);
-            common.PlayerMovingStruct.start.write(view, 1);
-          } else {
-            common.PlayerMovingStruct.direction.write(view, common.Direction.Left);
-            common.PlayerMovingStruct.start.write(view, 1);
-          }
-          bot.timeoutBeforeTurn = Math.abs(dx) / common.PLAYER_SPEED;
-        } else if (Math.abs(dy) > EPS) {
-          if(dy > 0) {
-            common.PlayerMovingStruct.direction.write(view, common.Direction.Down);
-            common.PlayerMovingStruct.start.write(view, 1);
-          } else {
-            common.PlayerMovingStruct.direction.write(view, common.Direction.Up);
-            common.PlayerMovingStruct.start.write(view, 1);
-          }
-          bot.timeoutBeforeTurn = Math.abs(dy) / common.PLAYER_SPEED;
-        }
 
-        bot.ws.send(view);
-  
-        // new random target if reached goal
-        if (bot.timeoutBeforeTurn === undefined) {
-          bot.goalX = Math.random() * common.WORLD_WIDTH;
-          bot.goalY = Math.random() * common.WORLD_HEIGHT;
+      // Full stop
+      for (let direction = 0; direction < common.Direction.Count; ++direction) {
+        if ((bot.me.moving >> direction) & 1) {
+          common.PlayerMovingStruct.direction.write(view, direction);
+          common.PlayerMovingStruct.start.write(view, 0);
+          bot.ws.send(view);
         }
-      } while (bot.timeoutBeforeTurn === undefined);
+      }
+
+      // New direction
+      const direction = Math.floor(Math.random() * common.Direction.Count);
+      bot.timeoutBeforeTurn = Math.random() * common.WORLD_WIDTH * 0.5 / common.PLAYER_SPEED;
+
+      // Sync
+      common.PlayerMovingStruct.direction.write(view, direction);
+      common.PlayerMovingStruct.start.write(view, 1);
+      bot.ws.send(view);
     }
   }
 
@@ -133,7 +116,7 @@ function createBot(): Bot {
 
 
 let bots: Array<Bot> = [];
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < 100; i++) {
   bots.push(createBot());
 }
 
