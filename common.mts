@@ -17,6 +17,30 @@ export type Moving = {
   [k in Direction]: boolean
 }
 
+const directions: Direction[] = ['left', 'right', 'up', 'down'];
+
+export const movingMask = (moving: Moving): number => {
+  let mask = 0;
+  for (let i = 0; i < directions.length; i++) {
+    if (moving[directions[i]]) {
+      mask = mask|(1<<i);
+    }
+  }
+
+  return mask;
+}
+
+export const movingFromMask = (mask: number): Moving => {
+  let moving: Moving = structuredClone(DEFAULT_MOVING);
+  for (let i = 0; i < directions.length; i++) {
+    if (((mask>>i)&1) !== 0) {
+      moving[directions[i]] = true;
+    }
+  }
+
+  return moving;
+}
+
 export const DEFAULT_MOVING: Moving = {
   left: false,
   right: false,
@@ -46,6 +70,7 @@ export interface Player {
 
 export enum MessageKind {
   Hello,
+  PlayerJoined,
 }
 
 interface Field {
@@ -107,8 +132,39 @@ export const HelloStruct = (() => {
   };
 })();
 
+export const PlayerJoinedStruct = (() => {
+  const allocator = { iota: 0 };
+  return {
+    kind: allocUint8Field(allocator),
+    id: allocUint32Field(allocator),
+    x: allocFloat32Field(allocator),
+    y: allocFloat32Field(allocator),
+    hue: allocUint8Field(allocator),
+    moving: allocUint8Field(allocator),
+    size: allocator.iota,
+  };
+})();
+
+export interface Hello {
+  kind: 'hello',
+  id: number,
+  x: number,
+  y: number,
+  hue: string,
+}
+
+export function isHello(arg: any): arg is Hello  {
+  return arg
+    && arg.kind === 'hello'
+    && typeof(arg.id) === 'number'
+    && typeof(arg.x) === 'number'
+    && typeof(arg.y) === 'number'
+    && typeof(arg.hue) === 'number'
+}
+
+
 export interface PlayerJoined {
-  kind: 'playerJoined',
+  kind: 'PlayerJoined',
   id: number,
   x: number,
   y: number,
@@ -117,7 +173,7 @@ export interface PlayerJoined {
 
 export function isPlayerJoined(arg: any): arg is PlayerJoined  {
   return arg
-    && arg.kind === 'playerJoined'
+    && arg.kind === 'PlayerJoined'
     && typeof(arg.id) === 'number'
     && typeof(arg.x) === 'number'
     && typeof(arg.y) === 'number'
@@ -165,7 +221,6 @@ export function isPlayerMoved(arg: any): arg is PlayerMoved  {
     && typeof(arg.start) === 'boolean'
     && isDirection(arg.direction)
 }
-
 
 export type Event = PlayerJoined | PlayerLeft | PlayerMoving | PlayerMoved;
 

@@ -121,7 +121,7 @@ wss.on('connection', (ws) => {
     hue,
     x,
     y,
-    kind: 'playerJoined',
+    kind: 'PlayerJoined',
   });
 
   // update stats
@@ -191,7 +191,7 @@ const tick = () => {
 
   for (let event of eventQueue) {
     switch(event.kind) {
-      case 'playerJoined': {
+      case 'PlayerJoined': {
         joinedIds.add(event.id);
         break; 
       }
@@ -225,16 +225,25 @@ const tick = () => {
       //   hue: joinedPlayer.hue,
       // }, messageCounter);
 
+      // Reconstruct all other players in new player's state
       players.forEach((otherPlayer) => {
         if (otherPlayer.id !== joinedPlayer.id) {
-          // Notify new player about all other players
-          common.sendMessage<PlayerJoined>(joinedPlayer.ws, {
-            kind: 'playerJoined',
-            id: otherPlayer.id,
-            x: otherPlayer.x,
-            y: otherPlayer.y,
-            hue: otherPlayer.hue,
-          }, messageCounter);
+          const view = new DataView(new ArrayBuffer(common.PlayerJoinedStruct.size));
+          common.PlayerJoinedStruct.kind.write(view, 0, common.MessageKind.PlayerJoined);
+          common.PlayerJoinedStruct.id.write(view, 0, otherPlayer.id);
+          common.PlayerJoinedStruct.x.write(view, 0, otherPlayer.x);
+          common.PlayerJoinedStruct.y.write(view, 0, otherPlayer.y);
+          common.PlayerJoinedStruct.hue.write(view, 0, Math.floor(otherPlayer.hue/360*256));
+          common.PlayerJoinedStruct.moving.write(view, 0, common.movingMask(otherPlayer.moving));
+          joinedPlayer.ws.send(view);
+
+          // common.sendMessage<PlayerJoined>(joinedPlayer.ws, {
+          //   kind: 'playerJoined',
+          //   id: otherPlayer.id,
+          //   x: otherPlayer.x,
+          //   y: otherPlayer.y,
+          //   hue: otherPlayer.hue,
+          // }, messageCounter);
         }
       });
     } 
@@ -244,15 +253,25 @@ const tick = () => {
   joinedIds.forEach((playerId) => {
     const joinedPlayer = players.get(playerId);
     if (joinedPlayer !== undefined) {
+      const view = new DataView(new ArrayBuffer(common.PlayerJoinedStruct.size));
+      common.PlayerJoinedStruct.kind.write(view, 0, common.MessageKind.PlayerJoined);
+      common.PlayerJoinedStruct.id.write(view, 0, joinedPlayer.id);
+      common.PlayerJoinedStruct.x.write(view, 0, joinedPlayer.x);
+      common.PlayerJoinedStruct.y.write(view, 0, joinedPlayer.y);
+      common.PlayerJoinedStruct.hue.write(view, 0, Math.floor(joinedPlayer.hue/360*256));
+      common.PlayerJoinedStruct.moving.write(view, 0, common.movingMask(joinedPlayer.moving));
+
+      
       players.forEach((otherPlayer) => {
         if(playerId !== otherPlayer.id) {
-          common.sendMessage<PlayerJoined>(otherPlayer.ws, {
-            kind: 'playerJoined',
-            id: joinedPlayer.id,
-            x: joinedPlayer.x,
-            y: joinedPlayer.y,
-            hue: joinedPlayer.hue,
-          }, messageCounter);
+          otherPlayer.ws.send(view);
+          // common.sendMessage<PlayerJoined>(otherPlayer.ws, {
+          //   kind: 'PlayerJoined',
+          //   id: joinedPlayer.id,
+          //   x: joinedPlayer.x,
+          //   y: joinedPlayer.y,
+          //   hue: joinedPlayer.hue,
+          // }, messageCounter);
         }
       });
     }

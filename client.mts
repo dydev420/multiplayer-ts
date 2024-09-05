@@ -70,33 +70,43 @@ const DIRECTION_KEYS: {[key: string]: Direction} = {
       }
     } else {
       console.log('Received messaged on player Id', me);
-      const messageData = JSON.parse(event.data);
-      if(common.isPlayerJoined(messageData)) {
-        players.set(messageData.id, {
-          id: messageData.id,
-          x: messageData.x,
-          y: messageData.y,
-          moving: structuredClone(common.DEFAULT_MOVING),
-          hue: messageData.hue,
-        });
-        console.log('New Player Joined -- Players id:', players);
-      } else if (common.isPlayerLeft(messageData)) {
-        players.delete(messageData.id);
-        console.log('Payer Left -- Players id:', players);
-      } else if (common.isPlayerMoved(messageData)) {
-        console.log('Verified player move data', messageData);
-        
-        const player = players.get(messageData.id);
-        if(!player) {
-          console.log('Unknown player id:', messageData.id);
-          return;
+      if(event.data instanceof ArrayBuffer) {
+        const view = new DataView(event.data);
+        console.log('view joined', view);
+        if(
+          common.PlayerJoinedStruct.size === view.byteLength
+          && common.PlayerJoinedStruct.kind.read(view, 0) === common.MessageKind.PlayerJoined
+        ) {
+          const id = common.PlayerJoinedStruct.id.read(view, 0);
+          players.set(id, {
+            id,
+            x: common.PlayerJoinedStruct.x.read(view, 0),
+            y: common.PlayerJoinedStruct.y.read(view, 0),
+            moving: common.movingFromMask(common.PlayerJoinedStruct.moving.read(view, 0)),
+            hue: common.PlayerJoinedStruct.hue.read(view, 0)/256*360,
+          });
         }
-        player.moving[messageData.direction] = messageData.start;
-        player.x = messageData.x;
-        player.y = messageData.y;
       } else {
-        console.log('Server unexpected. Closing connection');
-        ws.close();
+        // other events handle
+        const messageData = JSON.parse(event.data);
+        if (common.isPlayerLeft(messageData)) {
+          players.delete(messageData.id);
+          console.log('Payer Left -- Players id:', players);
+        } else if (common.isPlayerMoved(messageData)) {
+          console.log('Verified player move data', messageData);
+          
+          const player = players.get(messageData.id);
+          if(!player) {
+            console.log('Unknown player id:', messageData.id);
+            return;
+          }
+          player.moving[messageData.direction] = messageData.start;
+          player.x = messageData.x;
+          player.y = messageData.y;
+        } else {
+          console.log('Server unexpected. Closing connection');
+          ws.close();
+        }
       }
     }
   });
