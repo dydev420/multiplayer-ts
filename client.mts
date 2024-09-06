@@ -128,7 +128,7 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
         
         if(player.id !== me?.id ) {
           // Draw Player Body
-          ctx.fillStyle = `hsl(${player.hue} 80% 50%)`;
+          ctx.fillStyle = `hsl(${player.hue} 80% 40%)`;
           ctx.fillRect(player.x, player.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
         }
       });
