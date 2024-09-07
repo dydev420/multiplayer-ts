@@ -182,82 +182,127 @@ const tick = () => {
   const deltaTime = (timestamp - previousTimestamp)/1000;
   previousTimestamp = timestamp;
 
-  // Welcome all new joined players
-  joinedIds.forEach((playerId) => {
-    const joinedPlayer = players.get(playerId);
-    if (joinedPlayer !== undefined) {
-      const view = new DataView(new ArrayBuffer(common.HelloStruct.size));
-      common.HelloStruct.kind.write(view, common.MessageKind.Hello);
-      common.HelloStruct.id.write(view, joinedPlayer.id);
-      common.HelloStruct.x.write(view, joinedPlayer.x);
-      common.HelloStruct.y.write(view, joinedPlayer.y);
-      common.HelloStruct.hue.write(view, Math.floor(joinedPlayer.hue/360*256));
-      joinedPlayer.ws.send(view);
+  // Initialize new joined players
+  {
+    const playerCount = players.size;
+    const buffer = new ArrayBuffer(common.BatchHeaderStruct.size + playerCount * common.PlayerStruct.size)
+    const headerView = new DataView(buffer, 0, common.BatchHeaderStruct.size);
+    common.BatchHeaderStruct.kind.write(headerView, common.MessageKind.PlayerJoined);
+    common.BatchHeaderStruct.count.write(headerView, playerCount);
+    
+    
+    let playerIndex = 0;
+    // Add existing players data to the message
+    players.forEach((player) => {
+      const playerView = new DataView(buffer, common.BatchHeaderStruct.size + playerIndex * common.PlayerStruct.size);
+      common.PlayerStruct.id.write(playerView, player.id);
+      common.PlayerStruct.x.write(playerView, player.x);
+      common.PlayerStruct.y.write(playerView, player.y);
+      common.PlayerStruct.moving.write(playerView, player.moving);
+      common.PlayerStruct.hue.write(playerView, Math.floor(player.hue/360*256));
+    
+      playerIndex++;
+    });
 
-      // Reconstruct all other players in new player's state
-      players.forEach((otherPlayer) => {
-        if (otherPlayer.id !== joinedPlayer.id) {
-          const view = new DataView(new ArrayBuffer(common.PlayerJoinedStruct.size));
-          common.PlayerJoinedStruct.kind.write(view, common.MessageKind.PlayerJoined);
-          common.PlayerJoinedStruct.id.write(view, otherPlayer.id);
-          common.PlayerJoinedStruct.x.write(view, otherPlayer.x);
-          common.PlayerJoinedStruct.y.write(view, otherPlayer.y);
-          common.PlayerJoinedStruct.hue.write(view, Math.floor(otherPlayer.hue/360*256));
-          common.PlayerJoinedStruct.moving.write(view, otherPlayer.moving);
-          joinedPlayer.ws.send(view);
-        }
-      });
-    } 
-  });
+    // Welcome all new joined players
+    joinedIds.forEach((playerId) => {
+      const joinedPlayer = players.get(playerId);
+      if (joinedPlayer !== undefined) {
+        const helloView = new DataView(new ArrayBuffer(common.HelloStruct.size));
+        common.HelloStruct.kind.write(helloView, common.MessageKind.Hello);
+        common.HelloStruct.id.write(helloView, joinedPlayer.id);
+        common.HelloStruct.x.write(helloView, joinedPlayer.x);
+        common.HelloStruct.y.write(helloView, joinedPlayer.y);
+        common.HelloStruct.hue.write(helloView, Math.floor(joinedPlayer.hue/360*256));
+        
+        // Hello
+        joinedPlayer.ws.send(helloView);
+        // Reconstruct all other players in new player's state
+        joinedPlayer.ws.send(buffer);
+      } 
+    });
+  }
+  
 
-  // Notify all players others about who joined
-  joinedIds.forEach((playerId) => {
-    const joinedPlayer = players.get(playerId);
-    if (joinedPlayer !== undefined) {
-      const view = new DataView(new ArrayBuffer(common.PlayerJoinedStruct.size));
-      common.PlayerJoinedStruct.kind.write(view, common.MessageKind.PlayerJoined);
-      common.PlayerJoinedStruct.id.write(view, joinedPlayer.id);
-      common.PlayerJoinedStruct.x.write(view, joinedPlayer.x);
-      common.PlayerJoinedStruct.y.write(view, joinedPlayer.y);
-      common.PlayerJoinedStruct.hue.write(view, Math.floor(joinedPlayer.hue/360*256));
-      common.PlayerJoinedStruct.moving.write(view, joinedPlayer.moving);
-      
-      players.forEach((otherPlayer) => {
-        if(playerId !== otherPlayer.id) {
-          otherPlayer.ws.send(view);
-        }
-      });
-    }
-  });
+  // Notify existing players about new players
+  if (joinedIds.size) {
+    const playerCount = players.size;
+    const buffer = new ArrayBuffer(common.BatchHeaderStruct.size + playerCount * common.PlayerStruct.size)
+    const headerView = new DataView(buffer, 0, common.BatchHeaderStruct.size);
+    common.BatchHeaderStruct.kind.write(headerView, common.MessageKind.PlayerJoined);
+
+    // use player index to keep track of added players to buffer and set count in buffer
+    let playerIndex = 0;
+    // Notify all players others about who joined
+    joinedIds.forEach((playerId) => {
+      const otherPlayer = players.get(playerId);
+      if (otherPlayer !== undefined) {
+        const playerView = new DataView(buffer, common.BatchHeaderStruct.size + playerIndex * common.PlayerStruct.size);
+        common.PlayerStruct.id.write(playerView, otherPlayer.id);
+        common.PlayerStruct.x.write(playerView, otherPlayer.x);
+        common.PlayerStruct.y.write(playerView, otherPlayer.y);
+        common.PlayerStruct.hue.write(playerView, Math.floor(otherPlayer.hue/360*256));
+        common.PlayerStruct.moving.write(playerView, otherPlayer.moving);
+        
+        playerIndex++;
+      }
+    });
+    common.BatchHeaderStruct.count.write(headerView, playerIndex);
+
+    // Send to only old players
+    players.forEach((player) => {
+      if(!joinedIds.has(player.id)) {
+        player.ws.send(buffer);
+      }
+    });
+  }
 
   // Notifying about who left
   leftIds.forEach((leftId) => {
     const view = new DataView(new ArrayBuffer(common.PlayerLeftStruct.size));
-    common.PlayerJoinedStruct.kind.write(view, common.MessageKind.PlayerLeft);
-    common.PlayerJoinedStruct.id.write(view, leftId);
+    common.PlayerLeftStruct.kind.write(view, common.MessageKind.PlayerLeft);
+    common.PlayerLeftStruct.id.write(view, leftId);
     players.forEach((player) => {
       player.ws.send(view);
     });
   });
 
-  // Notify about movement
-  players.forEach((player) => {
-    if (player.newMoving !== player.moving) {
-      player.moving = player.newMoving;
+  
+  // Notify players about movement
+  {
+    let movedCount = 0;
+    players.forEach((player) => {
+      if (player.newMoving !== player.moving) {
+        movedCount++;
+      }
+    });
+    if (movedCount) {
+      const buffer = new ArrayBuffer(common.BatchHeaderStruct.size + movedCount * common.PlayerStruct.size);
+      const headerView = new DataView(buffer, 0, common.BatchHeaderStruct.size);
+      common.BatchHeaderStruct.kind.write(headerView, common.MessageKind.PlayerMoved);
+      common.BatchHeaderStruct.count.write(headerView, movedCount);
       
-      const view = new DataView(new ArrayBuffer(common.PlayerMovedStruct.size));
-      common.PlayerMovedStruct.kind.write(view, common.MessageKind.PlayerMoved);
-      common.PlayerMovedStruct.id.write(view, player.id);
-      common.PlayerMovedStruct.x.write(view, player.x);
-      common.PlayerMovedStruct.y.write(view, player.y);
-      common.PlayerMovedStruct.moving.write(view, player.moving);
- 
-      
+      let movedIndex = 0;
+      players.forEach((player) => {
+        if (player.newMoving !== player.moving) {
+          player.moving = player.newMoving;
+    
+          const offset = common.BatchHeaderStruct.size + movedIndex * common.PlayerStruct.size;
+          const view = new DataView(buffer, offset, common.PlayerStruct.size);
+          common.PlayerStruct.id.write(view, player.id);
+          common.PlayerStruct.x.write(view, player.x);
+          common.PlayerStruct.y.write(view, player.y);
+          common.PlayerStruct.moving.write(view, player.moving);
+        
+          movedIndex++;
+        }
+      });
+    
       players.forEach((otherPlayer) => {
-        otherPlayer.ws.send(view);
+        otherPlayer.ws.send(buffer);
       });
     }
-  });
+  }
   
   // Update Engine tick
   players.forEach((player) => common.updatePlayer(player, deltaTime));  

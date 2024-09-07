@@ -56,7 +56,7 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
             moving: 0,
           };
           players.set(me.id, me);
-          console.log('Connected Players id:', me, players);
+          console.log('Connected Players', me);
         } else {
           console.log('Wrong Hello message received. Closing connection');
           ws.close();
@@ -65,28 +65,51 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
     } else {
       if(event.data instanceof ArrayBuffer) {
         const view = new DataView(event.data);
-        if(common.PlayerJoinedStruct.verify(view)) {
-          const id = common.PlayerJoinedStruct.id.read(view);
-          players.set(id, {
-            id,
-            x: common.PlayerJoinedStruct.x.read(view),
-            y: common.PlayerJoinedStruct.y.read(view),
-            moving: common.PlayerJoinedStruct.moving.read(view),
-            hue: common.PlayerJoinedStruct.hue.read(view)/256*360,
-          });
+        if(common.BatchHeaderStruct.verifyJoined(view)) {
+          const count = common.BatchHeaderStruct.count.read(view);
+
+          for (let i = 0; i < count ; i++) {
+            const offset = common.BatchHeaderStruct.size + i* common.PlayerStruct.size;
+            const playerView = new DataView(event.data, offset, common.PlayerStruct.size);
+
+            const playerId = common.PlayerStruct.id.read(playerView);
+            const player = players.get(playerId);
+
+            if(player) {
+              player.x = common.PlayerStruct.x.read(playerView);
+              player.y = common.PlayerStruct.y.read(playerView);
+              player.hue = common.PlayerStruct.hue.read(playerView)/256*360;
+              player.moving = common.PlayerStruct.moving.read(playerView);
+            } else {
+              players.set(playerId, {
+                id: playerId,
+                x: common.PlayerStruct.x.read(playerView),
+                y: common.PlayerStruct.y.read(playerView),
+                moving: common.PlayerStruct.moving.read(playerView),
+                hue: common.PlayerStruct.hue.read(playerView)/256*360,
+              });
+            } 
+          }
         } else if (common.PlayerLeftStruct.verify(view)) {
           players.delete(common.PlayerLeftStruct.id.read(view));
-          console.log('Payer Left -- Players id:', players);
-        } else if (common.PlayerMovedStruct.verify(view)) {
-          const playerId = common.PlayerMovedStruct.id.read(view);
-          const player = players.get(playerId);
-          if(!player) {
-            console.log('Unknown player id:', playerId);
-            return;
+          console.log('Payer Left -- id:', common.PlayerLeftStruct.id.read(view));
+        } else if (common.BatchHeaderStruct.verifyMoved(view)) {
+          const count = common.BatchHeaderStruct.count.read(view);
+
+          for (let i = 0; i < count ; i++) {
+            const offset = common.BatchHeaderStruct.size + i* common.PlayerStruct.size;
+            const playerView = new DataView(event.data, offset);
+
+            const playerId = common.PlayerStruct.id.read(playerView);
+            const player = players.get(playerId);
+            if(!player) {
+              console.log('Unknown player id:', playerId);
+              return;
+            }
+            player.moving = common.PlayerStruct.moving.read(playerView);
+            player.x = common.PlayerStruct.x.read(playerView);
+            player.y = common.PlayerStruct.y.read(playerView);
           }
-          player.moving = common.PlayerMovedStruct.moving.read(view);
-          player.x = common.PlayerMovedStruct.x.read(view);
-          player.y = common.PlayerMovedStruct.y.read(view);
         } else if (common.PingPongStruct.verifyPong(view)) {
             ping = performance.now() - common.PingPongStruct.timestamp.read(view);
         } else {

@@ -2,6 +2,9 @@ import { WebSocket } from "ws";
 import * as common from './common.mjs';
 import type { Player } from "./common.mjs";
 
+// Set number of bots
+const TOTAL_BOTS = 20;
+
 // const EPS = 1e-6;
 const EPS = 10;
 const BOT_FPS = 30;
@@ -49,12 +52,19 @@ function createBot(): Bot {
           bot.ws.close();
         }
     } else {
-      if (common.PlayerMovedStruct.verify(view)) {
-        const botId = common.PlayerMovedStruct.id.read(view);
-        if(bot.me && botId === bot.me.id)  {
-          bot.me.moving = common.PlayerMovedStruct.moving.read(view);
-          bot.me.x = common.PlayerMovedStruct.x.read(view);
-          bot.me.y = common.PlayerMovedStruct.y.read(view);
+      if (common.BatchHeaderStruct.verifyMoved(view)) {
+        const count = common.BatchHeaderStruct.count.read(view);
+        
+        for (let i = 0; i < count ; i++) {
+          const offset = common.BatchHeaderStruct.size + i* common.PlayerStruct.size;
+          const playerView = new DataView(event.data, offset);
+
+          const playerId = common.PlayerStruct.id.read(playerView);
+          if(bot.me && playerId === bot.me.id)  {
+            bot.me.moving = common.PlayerStruct.moving.read(playerView);
+            bot.me.x = common.PlayerStruct.x.read(playerView);
+            bot.me.y = common.PlayerStruct.y.read(playerView);
+          }
         }
       }
     }
@@ -116,7 +126,7 @@ function createBot(): Bot {
 
 
 let bots: Array<Bot> = [];
-for (let i = 0; i < 100; i++) {
+for (let i = 0; i < TOTAL_BOTS; i++) {
   bots.push(createBot());
 }
 

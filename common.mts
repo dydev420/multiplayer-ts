@@ -1,7 +1,7 @@
 import * as ws from "ws";
 
 export const SERVER_PORT = 6970;
-export const SERVER_FPS = 30;
+export const SERVER_FPS = 60;
 export const WORLD_WIDTH = 800;
 export const WORLD_HEIGHT = 600;
 export const PLAYER_SIZE = 30;
@@ -53,6 +53,7 @@ interface Field {
 }
 
 const UINT8_SIZE = 1;
+const UINT16_SIZE = 2;
 const UINT32_SIZE = 4;
 const FLOAT32_SIZE = 4;
 
@@ -65,6 +66,18 @@ function allocUint8Field(allocator: { iota: number }): Field {
     size,
     read: (view) => view.getUint8(offset),
     write: (view, value) => view.setUint8(offset, value),
+  };
+}
+
+function allocUint16Field(allocator: { iota: number }): Field {
+  const offset = allocator.iota;
+  const size = UINT16_SIZE;
+  allocator.iota += size;
+  return {
+    offset,
+    size,
+    read: (view) => view.getUint16(offset),
+    write: (view, value) => view.setUint16(offset, value),
   };
 }
 
@@ -128,19 +141,6 @@ export const HelloStruct = (() => {
   return { kind, id, x, y, hue, size, verify };
 })();
 
-export const PlayerJoinedStruct = (() => {
-  const allocator = { iota: 0 };
-  const kind   = allocUint8Field(allocator);
-  const id = allocUint32Field(allocator);
-  const x = allocFloat32Field(allocator);
-  const y = allocFloat32Field(allocator);
-  const hue = allocUint8Field(allocator);
-  const moving = allocUint8Field(allocator);
-  const size = allocator.iota;
-  const verify = verifier(kind, MessageKind.PlayerJoined, size);
-  return { kind, id, x, y, hue, moving, size, verify };
-})();
-
 export const PlayerLeftStruct = (() => {
   const allocator = { iota: 0 };
   const kind = allocUint8Field(allocator);
@@ -160,16 +160,33 @@ export const PlayerMovingStruct = (() => {
   return { kind, direction, start, size, verify }
 })()
 
-export const PlayerMovedStruct = (() => {
+export const PlayerStruct = (() => {
   const allocator = { iota: 0 };
-  const kind   = allocUint8Field(allocator);
-  const id     = allocUint32Field(allocator);
-  const x      = allocFloat32Field(allocator);
-  const y      = allocFloat32Field(allocator);
+  const id = allocUint32Field(allocator);
+  const x = allocFloat32Field(allocator);
+  const y = allocFloat32Field(allocator);
+  const hue = allocUint8Field(allocator);
   const moving = allocUint8Field(allocator);
-  const size   = allocator.iota;
-  const verify = verifier(kind, MessageKind.PlayerMoved, size);
-  return {kind, id, x, y, moving, size, verify};
+  const size = allocator.iota;
+  return { id, x, y, hue, moving, size };
+})();
+
+export const BatchHeaderStruct = (() => {
+  const allocator = { iota: 0 };
+  const kind = allocUint8Field(allocator);
+  const count = allocUint16Field(allocator);
+  const size = allocator.iota;
+  const verifyMoved = (view: DataView) => {
+    return view.byteLength >= size
+      && (view.byteLength - size) % PlayerStruct.size === 0
+      && kind.read(view) === MessageKind.PlayerMoved
+  };
+  const verifyJoined = (view: DataView) => {
+    return view.byteLength >= size
+      && (view.byteLength - size) % PlayerStruct.size === 0
+      && kind.read(view) === MessageKind.PlayerJoined
+  };
+  return {kind, count, size, verifyMoved, verifyJoined };
 })();
 
 interface MessageCounter {
