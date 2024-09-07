@@ -1,4 +1,5 @@
 import * as ws from "ws";
+import { Vector2, Vector3 } from "./lib/vector.mjs";
 
 export const SERVER_PORT = 6970;
 export const SERVER_FPS = 60;
@@ -21,11 +22,6 @@ export function checkDirectionMask(moving: number, dir: number): number {
 
 export function applyDirectionMask(moving: number, dir: number, start: number = 0): number {
   return start ? moving|(1<<dir) : moving&~(1<<dir);
-}
-
-export type Vector2 = {
-  x: number,
-  y: number,
 }
 
 export const DIRECTION_VECTORS: Vector2[] = (() => {
