@@ -8,11 +8,15 @@ export const WORLD_HEIGHT = 600;
 export const PLAYER_SIZE = 30;
 export const PLAYER_SPEED = 500;
 
-export enum Direction {
-    Left = 0,
-    Right,
-    Up,
-    Down,
+export function properMod(a: number, b: number) {
+  return (a % b + b) % b;
+}
+
+export enum Moving {
+    MovingForward = 0,
+    MovingBackward,
+    TurningLeft,
+    TurningRight,
     Count,
 }
 
@@ -24,18 +28,10 @@ export function applyDirectionMask(moving: number, dir: number, start: number = 
   return start ? moving|(1<<dir) : moving&~(1<<dir);
 }
 
-export const DIRECTION_VECTORS: Vector2[] = (() => {
-  const vectors = Array(Direction.Count);
-  vectors[Direction.Left] = { x: -1, y: 0 };
-  vectors[Direction.Right] = { x: 1, y: 0 };
-  vectors[Direction.Up] = { x: 0, y: -1 };
-  vectors[Direction.Down] = { x: 0, y: 1 };
-  return vectors;
-})();
-
 export interface Player {
   id: number,
   position: Vector2,
+  direction: number,
   moving: number,
   hue: number,
 }
@@ -130,10 +126,11 @@ export const HelloStruct = (() => {
   const id = allocUint32Field(allocator);
   const x = allocFloat32Field(allocator);
   const y = allocFloat32Field(allocator);
+  const direction = allocFloat32Field(allocator);
   const hue = allocUint8Field(allocator);
   const size = allocator.iota;
   const verify = verifier(kind, MessageKind.Hello, size);
-  return { kind, id, x, y, hue, size, verify };
+  return { kind, id, x, y, direction, hue, size, verify };
 })();
 
 export const PlayerLeftStruct = (() => {
@@ -161,9 +158,10 @@ export const PlayerStruct = (() => {
   const x = allocFloat32Field(allocator);
   const y = allocFloat32Field(allocator);
   const hue = allocUint8Field(allocator);
+  const direction = allocFloat32Field(allocator);
   const moving = allocUint8Field(allocator);
   const size = allocator.iota;
-  return { id, x, y, hue, moving, size };
+  return { id, x, y, hue, direction, moving, size };
 })();
 
 export const BatchHeaderStruct = (() => {
@@ -209,17 +207,34 @@ export function fMod(a: number, b: number) {
   return (a % b + b) % b;
 }
 
-export function updatePlayer (player: Player, deltaTime: number) {
-  let dx = 0;
-  let dy = 0;
-  for (let dir = 0; dir < Direction.Count; dir++) {
-    if (checkDirectionMask(player.moving, dir)) {
-      dx += DIRECTION_VECTORS[dir].x;
-      dy += DIRECTION_VECTORS[dir].y;
-    }
+export function updatePlayer(player: Player, deltaTime: number) {
+  const controlVelocity = new Vector2(0);
+  let angularVelocity = 0.0;
+  if (checkDirectionMask(player.moving, Moving.MovingForward)) {
+      controlVelocity.add(new Vector2().setPolar(player.direction, PLAYER_SPEED))
   }
-  const newX = player.position.x + dx * PLAYER_SPEED * deltaTime;
-  const newY = player.position.y + dy * PLAYER_SPEED * deltaTime;
-  player.position.x = fMod(newX, WORLD_WIDTH);
-  player.position.y = fMod(newY, WORLD_HEIGHT);
+  if (checkDirectionMask(player.moving, Moving.MovingBackward)) {
+      controlVelocity.sub(new Vector2().setPolar(player.direction, PLAYER_SPEED))
+  }
+  if (checkDirectionMask(player.moving, Moving.TurningLeft)) {
+      angularVelocity -= Math.PI;
+  }
+  if (checkDirectionMask(player.moving, Moving.TurningRight)) {
+      angularVelocity += Math.PI;
+  }
+  player.direction = player.direction + angularVelocity*deltaTime;
+  player.position.add(controlVelocity.scale(deltaTime));
+  
+  // Wrap Around (Not needed for FPS, only for 2D)
+  player.position.x = properMod(player.position.x, WORLD_WIDTH);
+  player.position.y = properMod(player.position.y, WORLD_HEIGHT);
+
+  // const nx = player.position.x + player.controlVelocity.x*deltaTime;
+  // if (sceneCanRectangleFitHere(scene, nx, player.position.y, MINIMAP_PLAYER_SIZE, MINIMAP_PLAYER_SIZE)) {
+  //     player.position.x = nx;
+  // }
+  // const ny = player.position.y + player.controlVelocity.y*deltaTime;
+  // if (sceneCanRectangleFitHere(scene, player.position.x, ny, MINIMAP_PLAYER_SIZE, MINIMAP_PLAYER_SIZE)) {
+  //     player.position.y = ny;
+  // }
 }

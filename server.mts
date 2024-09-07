@@ -117,6 +117,7 @@ wss.on('connection', (ws) => {
     id,
     position,
     hue,
+    direction: 0,
     moving: 0,
     newMoving: 0,
     moved: false,
@@ -199,6 +200,7 @@ const tick = () => {
       common.PlayerStruct.id.write(playerView, player.id);
       common.PlayerStruct.x.write(playerView, player.position.x);
       common.PlayerStruct.y.write(playerView, player.position.y);
+      common.PlayerStruct.direction.write(playerView, player.direction);
       common.PlayerStruct.moving.write(playerView, player.moving);
       common.PlayerStruct.hue.write(playerView, Math.floor(player.hue/360*256));
     
@@ -214,6 +216,7 @@ const tick = () => {
         common.HelloStruct.id.write(helloView, joinedPlayer.id);
         common.HelloStruct.x.write(helloView, joinedPlayer.position.x);
         common.HelloStruct.y.write(helloView, joinedPlayer.position.y);
+        common.HelloStruct.direction.write(helloView, joinedPlayer.direction);
         common.HelloStruct.hue.write(helloView, Math.floor(joinedPlayer.hue/360*256));
         
         // Hello
@@ -243,6 +246,7 @@ const tick = () => {
         common.PlayerStruct.x.write(playerView, otherPlayer.position.x);
         common.PlayerStruct.y.write(playerView, otherPlayer.position.y);
         common.PlayerStruct.hue.write(playerView, Math.floor(otherPlayer.hue/360*256));
+        common.PlayerStruct.direction.write(playerView, otherPlayer.direction);
         common.PlayerStruct.moving.write(playerView, otherPlayer.moving);
         
         playerIndex++;
@@ -293,6 +297,7 @@ const tick = () => {
           common.PlayerStruct.id.write(view, player.id);
           common.PlayerStruct.x.write(view, player.position.x);
           common.PlayerStruct.y.write(view, player.position.y);
+          common.PlayerStruct.direction.write(view, player.direction);
           common.PlayerStruct.moving.write(view, player.moving);
         
           movedIndex++;

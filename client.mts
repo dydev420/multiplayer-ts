@@ -2,16 +2,44 @@ import { Vector2 } from './lib/vector.mjs';
 import * as common from './common.mjs';
 import type { Player, } from "./common.mjs";
 
-const DIRECTION_KEYS: {[key: string]: common.Direction} = {
-  ArrowLeft: common.Direction.Left,
-  ArrowRight: common.Direction.Right,
-  ArrowUp: common.Direction.Up,
-  ArrowDown: common.Direction.Down,
-  KeyA: common.Direction.Left,
-  KeyD: common.Direction.Right,
-  KeyW: common.Direction.Up,
-  KeyS: common.Direction.Down,
+const DIRECTION_KEYS: {[key: string]: common.Moving} = {
+  ArrowLeft: common.Moving.TurningLeft,
+  ArrowRight: common.Moving.TurningRight,
+  ArrowUp: common.Moving.MovingForward,
+  ArrowDown: common.Moving.MovingBackward,
+  KeyA: common.Moving.TurningLeft,
+  KeyD: common.Moving.TurningRight,
+  KeyW: common.Moving.MovingForward,
+  KeyS: common.Moving.MovingBackward,
 };
+
+function strokeLine(ctx: CanvasRenderingContext2D, p1: Vector2, p2: Vector2) {
+   ctx.beginPath();
+   ctx.moveTo(p1.x, p1.y);
+   ctx.lineTo(p2.x, p2.y);
+   ctx.stroke();
+}
+
+function drawPlayerBody(ctx: CanvasRenderingContext2D, player: Player) {
+  // Draw Player Body
+  ctx.fillStyle = `hsl(${player.hue} 80% 40%)`;
+  ctx.fillRect(player.position.x, player.position.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
+
+  // forward direction arrow
+  ctx.strokeStyle = `hsl(${player.hue} 80% 50%)`;
+  ctx.lineWidth = 4;
+  const center = player.position.clone().add(new Vector2(common.PLAYER_SIZE * 0.5, common.PLAYER_SIZE * 0.5));
+  strokeLine(
+    ctx,
+    center,
+    new Vector2().setPolar(player.direction, common.PLAYER_SIZE).add(center)
+  );
+}
+
+function drawPlayerOutline(ctx: CanvasRenderingContext2D, player: Player) {
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(player.position.x - 5, player.position.y - 5, common.PLAYER_SIZE + 10, common.PLAYER_SIZE + 10);
+}
 
 (async () => {
   const gameCanvas = document.getElementById('game') as HTMLCanvasElement;
@@ -57,6 +85,7 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
             ),
             hue: common.HelloStruct.hue.read(view)/256*360,
             moving: 0,
+            direction: common.HelloStruct.direction.read(view),
           };
           players.set(me.id, me);
           console.log('Connected Players', me);
@@ -82,6 +111,7 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
               player.position.x = common.PlayerStruct.x.read(playerView);
               player.position.y = common.PlayerStruct.y.read(playerView);
               player.hue = common.PlayerStruct.hue.read(playerView)/256*360;
+              player.direction = common.PlayerStruct.direction.read(playerView);
               player.moving = common.PlayerStruct.moving.read(playerView);
             } else {
               const x = common.PlayerStruct.x.read(playerView);
@@ -89,6 +119,7 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
               players.set(playerId, {
                 id: playerId,
                 position: new Vector2(x, y),
+                direction: common.PlayerStruct.direction.read(playerView), // change this or BUGS
                 moving: common.PlayerStruct.moving.read(playerView),
                 hue: common.PlayerStruct.hue.read(playerView)/256*360,
               });
@@ -111,6 +142,7 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
               return;
             }
             player.moving = common.PlayerStruct.moving.read(playerView);
+            player.direction = common.PlayerStruct.direction.read(playerView);
             player.position.x = common.PlayerStruct.x.read(playerView);
             player.position.y = common.PlayerStruct.y.read(playerView);
           }
@@ -149,25 +181,20 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
       ctx.fillStyle = "#080808";
       ctx.fillText(label, ctx.canvas.width/2 - labelSize.width/2, ctx.canvas.height/2 - labelSize.width/2);
     } else {
+      // Player game loop
       players.forEach((player) => {
         // Update all player physics
         common.updatePlayer(player, deltaTime);
         
         if(player.id !== me?.id ) {
-          // Draw Player Body
-          ctx.fillStyle = `hsl(${player.hue} 80% 40%)`;
-          ctx.fillRect(player.position.x, player.position.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
+          drawPlayerBody(ctx, player);
         }
       });
       
       // Draw current player on top with outline
       if(me) {
-        // outline
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(me.position.x - 5, me.position.y - 5, common.PLAYER_SIZE + 10, common.PLAYER_SIZE + 10);
-        // body
-        ctx.fillStyle = `hsl(${me.hue} 80% 50%)`;
-        ctx.fillRect(me.position.x, me.position.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
+        drawPlayerOutline(ctx, me);
+        drawPlayerBody(ctx, me);
       }
 
       // render ping stats
