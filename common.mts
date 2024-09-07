@@ -35,8 +35,7 @@ export const DIRECTION_VECTORS: Vector2[] = (() => {
 
 export interface Player {
   id: number,
-  x: number,
-  y: number,
+  position: Vector2,
   moving: number,
   hue: number,
 }
@@ -219,8 +218,8 @@ export function updatePlayer (player: Player, deltaTime: number) {
       dy += DIRECTION_VECTORS[dir].y;
     }
   }
-  const newX = player.x + dx * PLAYER_SPEED * deltaTime;
-  const newY = player.y + dy * PLAYER_SPEED * deltaTime;
-  player.x = fMod(newX, WORLD_WIDTH);
-  player.y = fMod(newY, WORLD_HEIGHT);
+  const newX = player.position.x + dx * PLAYER_SPEED * deltaTime;
+  const newY = player.position.y + dy * PLAYER_SPEED * deltaTime;
+  player.position.x = fMod(newX, WORLD_WIDTH);
+  player.position.y = fMod(newY, WORLD_HEIGHT);
 }

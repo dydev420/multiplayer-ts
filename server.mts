@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket } from "ws";
+import { Vector2 } from "./lib/vector.mjs";
 import * as common from './common.mjs';
 import type { Player } from "./common.mjs";
 
@@ -109,12 +110,12 @@ wss.on('connection', (ws) => {
   const id = idCounter++;
   const x = Math.random() * common.WORLD_WIDTH;
   const y = Math.random() * common.WORLD_HEIGHT;
+  const position = new Vector2(x, y);
   const hue = randomHue();
   const player = {
     ws,
     id,
-    x,
-    y,
+    position,
     hue,
     moving: 0,
     newMoving: 0,
@@ -196,8 +197,8 @@ const tick = () => {
     players.forEach((player) => {
       const playerView = new DataView(buffer, common.BatchHeaderStruct.size + playerIndex * common.PlayerStruct.size);
       common.PlayerStruct.id.write(playerView, player.id);
-      common.PlayerStruct.x.write(playerView, player.x);
-      common.PlayerStruct.y.write(playerView, player.y);
+      common.PlayerStruct.x.write(playerView, player.position.x);
+      common.PlayerStruct.y.write(playerView, player.position.y);
       common.PlayerStruct.moving.write(playerView, player.moving);
       common.PlayerStruct.hue.write(playerView, Math.floor(player.hue/360*256));
     
@@ -211,8 +212,8 @@ const tick = () => {
         const helloView = new DataView(new ArrayBuffer(common.HelloStruct.size));
         common.HelloStruct.kind.write(helloView, common.MessageKind.Hello);
         common.HelloStruct.id.write(helloView, joinedPlayer.id);
-        common.HelloStruct.x.write(helloView, joinedPlayer.x);
-        common.HelloStruct.y.write(helloView, joinedPlayer.y);
+        common.HelloStruct.x.write(helloView, joinedPlayer.position.x);
+        common.HelloStruct.y.write(helloView, joinedPlayer.position.y);
         common.HelloStruct.hue.write(helloView, Math.floor(joinedPlayer.hue/360*256));
         
         // Hello
@@ -239,8 +240,8 @@ const tick = () => {
       if (otherPlayer !== undefined) {
         const playerView = new DataView(buffer, common.BatchHeaderStruct.size + playerIndex * common.PlayerStruct.size);
         common.PlayerStruct.id.write(playerView, otherPlayer.id);
-        common.PlayerStruct.x.write(playerView, otherPlayer.x);
-        common.PlayerStruct.y.write(playerView, otherPlayer.y);
+        common.PlayerStruct.x.write(playerView, otherPlayer.position.x);
+        common.PlayerStruct.y.write(playerView, otherPlayer.position.y);
         common.PlayerStruct.hue.write(playerView, Math.floor(otherPlayer.hue/360*256));
         common.PlayerStruct.moving.write(playerView, otherPlayer.moving);
         
@@ -290,8 +291,8 @@ const tick = () => {
           const offset = common.BatchHeaderStruct.size + movedIndex * common.PlayerStruct.size;
           const view = new DataView(buffer, offset, common.PlayerStruct.size);
           common.PlayerStruct.id.write(view, player.id);
-          common.PlayerStruct.x.write(view, player.x);
-          common.PlayerStruct.y.write(view, player.y);
+          common.PlayerStruct.x.write(view, player.position.x);
+          common.PlayerStruct.y.write(view, player.position.y);
           common.PlayerStruct.moving.write(view, player.moving);
         
           movedIndex++;

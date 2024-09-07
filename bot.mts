@@ -1,6 +1,7 @@
 import { WebSocket } from "ws";
 import * as common from './common.mjs';
 import type { Player } from "./common.mjs";
+import { Vector2 } from "./lib/vector.mjs";
 
 // Set number of bots
 const TOTAL_BOTS = 20;
@@ -39,8 +40,10 @@ function createBot(): Bot {
       if (common.HelloStruct.verify(view)) {
         bot.me = {
           id: common.HelloStruct.id.read(view),
-          x: common.HelloStruct.x.read(view),
-          y: common.HelloStruct.y.read(view),
+          position: new Vector2(
+            common.HelloStruct.x.read(view),
+            common.HelloStruct.y.read(view)
+          ),
           hue: common.HelloStruct.hue.read(view)/256*360,
           moving: 0,
         };
@@ -62,8 +65,8 @@ function createBot(): Bot {
           const playerId = common.PlayerStruct.id.read(playerView);
           if(bot.me && playerId === bot.me.id)  {
             bot.me.moving = common.PlayerStruct.moving.read(playerView);
-            bot.me.x = common.PlayerStruct.x.read(playerView);
-            bot.me.y = common.PlayerStruct.y.read(playerView);
+            bot.me.position.x = common.PlayerStruct.x.read(playerView);
+            bot.me.position.y = common.PlayerStruct.y.read(playerView);
           }
         }
       }

@@ -1,3 +1,4 @@
+import { Vector2 } from './lib/vector.mjs';
 import * as common from './common.mjs';
 import type { Player, } from "./common.mjs";
 
@@ -50,8 +51,10 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
         if (common.HelloStruct.verify(view)) {
           me = {
             id: common.HelloStruct.id.read(view),
-            x: common.HelloStruct.x.read(view),
-            y: common.HelloStruct.y.read(view),
+            position: new Vector2(
+              common.HelloStruct.x.read(view),
+              common.HelloStruct.y.read(view),
+            ),
             hue: common.HelloStruct.hue.read(view)/256*360,
             moving: 0,
           };
@@ -76,15 +79,16 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
             const player = players.get(playerId);
 
             if(player) {
-              player.x = common.PlayerStruct.x.read(playerView);
-              player.y = common.PlayerStruct.y.read(playerView);
+              player.position.x = common.PlayerStruct.x.read(playerView);
+              player.position.y = common.PlayerStruct.y.read(playerView);
               player.hue = common.PlayerStruct.hue.read(playerView)/256*360;
               player.moving = common.PlayerStruct.moving.read(playerView);
             } else {
+              const x = common.PlayerStruct.x.read(playerView);
+              const y = common.PlayerStruct.y.read(playerView);
               players.set(playerId, {
                 id: playerId,
-                x: common.PlayerStruct.x.read(playerView),
-                y: common.PlayerStruct.y.read(playerView),
+                position: new Vector2(x, y),
                 moving: common.PlayerStruct.moving.read(playerView),
                 hue: common.PlayerStruct.hue.read(playerView)/256*360,
               });
@@ -107,8 +111,8 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
               return;
             }
             player.moving = common.PlayerStruct.moving.read(playerView);
-            player.x = common.PlayerStruct.x.read(playerView);
-            player.y = common.PlayerStruct.y.read(playerView);
+            player.position.x = common.PlayerStruct.x.read(playerView);
+            player.position.y = common.PlayerStruct.y.read(playerView);
           }
         } else if (common.PingPongStruct.verifyPong(view)) {
             ping = performance.now() - common.PingPongStruct.timestamp.read(view);
@@ -152,7 +156,7 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
         if(player.id !== me?.id ) {
           // Draw Player Body
           ctx.fillStyle = `hsl(${player.hue} 80% 40%)`;
-          ctx.fillRect(player.x, player.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
+          ctx.fillRect(player.position.x, player.position.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
         }
       });
       
@@ -160,10 +164,10 @@ const DIRECTION_KEYS: {[key: string]: common.Direction} = {
       if(me) {
         // outline
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(me.x - 5, me.y - 5, common.PLAYER_SIZE + 10, common.PLAYER_SIZE + 10);
+        ctx.fillRect(me.position.x - 5, me.position.y - 5, common.PLAYER_SIZE + 10, common.PLAYER_SIZE + 10);
         // body
         ctx.fillStyle = `hsl(${me.hue} 80% 50%)`;
-        ctx.fillRect(me.x, me.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
+        ctx.fillRect(me.position.x, me.position.y, common.PLAYER_SIZE, common.PLAYER_SIZE);
       }
 
       // render ping stats
